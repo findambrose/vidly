@@ -1,0 +1,69 @@
+---
+description: Development workflow and best practices for the Vidly project
+---
+
+# Development Workflow & Best Practices
+
+## 10X Engineer Principles
+- **Surgical Code**: Write minimal, precise code that solves the exact problem
+- **Less is More**: Favor concise, readable solutions over verbose implementations
+- **Quality First**: Every line should serve a purpose and be maintainable
+
+## Development Commands
+```bash
+# Development server
+pnpm dev
+
+# Code quality checks
+pnpm lint          # Check for issues
+pnpm lint:fix      # Auto-fix issues
+pnpm prettier      # Format code
+pnpm test          # Run all quality checks
+
+# Build and deployment
+pnpm build         # Production build
+pnpm start         # Production server
+```
+
+## Git Workflow
+- **Pre-commit Hooks**: Automatic linting and formatting via lint-staged
+- **Commit Standards**: Use conventional commit messages
+- **Branch Strategy**: Feature branches with meaningful names
+
+## Code Review Standards
+- **Type Safety**: All code must pass TypeScript strict checks
+- **Component Patterns**: Follow established component conventions
+- **Performance**: Consider Server vs Client component implications
+- **Accessibility**: Ensure WCAG compliance for UI components
+
+## Environment Setup
+- **Node.js**: Version >= 20 (specified in [package.json](mdc:package.json))
+- **Package Manager**: pnpm (lockfile: [pnpm-lock.yaml](mdc:pnpm-lock.yaml))
+- **Database**: Supabase local development via [supabase/config.toml](mdc:supabase/config.toml)
+
+## Testing Strategy
+- **Linting**: ESLint with Next.js and TypeScript rules
+- **Formatting**: Prettier for consistent code style
+- **Type Checking**: TypeScript compiler for type safety
+- **Manual Testing**: Component functionality and user flows
+
+## Performance Considerations
+- **Server Components**: Default choice for better performance
+- **Client Components**: Only when interactivity is required
+- **Image Optimization**: Use Next.js Image component
+- **Bundle Size**: Monitor and optimize package dependencies
+
+## Security Practices
+- **Environment Variables**: Secure API keys and secrets
+- **Authentication**: Supabase session validation
+- **API Security**: Request validation and error handling
+- **Webhook Verification**: Signature validation for external webhooks
+
+## Deployment Checklist
+- [ ] TypeScript compilation passes
+- [ ] ESLint checks pass
+- [ ] Prettier formatting applied
+- [ ] Environment variables configured
+- [ ] Database migrations applied
+- [ ] API endpoints tested
+- [ ] Authentication flows verified

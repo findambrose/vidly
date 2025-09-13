@@ -1,0 +1,79 @@
+---
+globs: **/api/**/*.ts,**/actions.ts
+---
+
+# API Routes & Server Actions Patterns
+
+## API Routes Structure
+- **Location**: `/src/app/api/` directory
+- **File Naming**: `route.ts` for API endpoints
+- **HTTP Methods**: Export named functions (`GET`, `POST`, `PUT`, `DELETE`)
+
+## API Route Pattern
+```tsx
+import { NextRequest } from 'next/server';
+
+export async function POST(request: NextRequest) {
+  try {
+    // Extract data from request
+    const body = await request.json();
+    
+    // Process request
+    const result = await processData(body);
+    
+    // Return response
+    return Response.json({ data: result });
+  } catch (error) {
+    console.error(error);
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+```
+
+## Server Actions Pattern
+- **Location**: `actions.ts` files in route directories
+- **Directive**: Must start with `'use server'`
+- **Usage**: For form submissions and data mutations
+
+```tsx
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import { createClient } from '@/utils/supabase/server';
+
+export async function actionName(data: FormData) {
+  // Server-side logic
+  const result = await processData(data);
+  
+  // Revalidate or redirect
+  revalidatePath('/path');
+  redirect('/success');
+}
+```
+
+## Authentication Patterns
+- **Session Validation**: Use `validateUserSession()` from [src/utils/supabase/server.ts](mdc:src/utils/supabase/server.ts)
+- **Supabase Client**: Use `createClient()` for server-side operations
+- **Error Handling**: Throw errors for unauthorized access
+
+## Webhook Handling
+- **Example**: [src/app/api/webhook/route.ts](mdc:src/app/api/webhook/route.ts)
+- **Security**: Validate signatures and verify requests
+- **Processing**: Use dedicated classes for complex webhook logic
+
+## Error Handling Standards
+- **Try-Catch**: Wrap all async operations
+- **Logging**: Use `console.log` for debugging
+- **Status Codes**: Return appropriate HTTP status codes
+- **Error Responses**: Consistent error response format
+
+## Data Validation
+- **Type Safety**: Use TypeScript interfaces for request/response types
+- **Input Validation**: Validate required fields and data types
+- **Security**: Sanitize inputs and validate permissions
+
+## Integration Patterns
+- **Paddle Billing**: Use [src/utils/paddle/](mdc:src/utils/paddle/) utilities
+- **Supabase**: Use [src/utils/supabase/](mdc:src/utils/supabase/) for database operations
+- **External APIs**: Handle rate limiting and error responses gracefully

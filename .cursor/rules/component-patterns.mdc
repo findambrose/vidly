@@ -1,0 +1,62 @@
+---
+globs: *.tsx,*.ts
+---
+
+# Component Patterns & Conventions
+
+## Component Organization
+- **Feature-based structure**: Components grouped by domain (dashboard, home, authentication, checkout)
+- **Co-location**: Related components in subdirectories (e.g., `components/dashboard/layout/`)
+- **UI Components**: shadcn/ui components in [src/components/ui/](mdc:src/components/ui/)
+
+## Naming Conventions
+- **Components**: PascalCase (e.g., `DashboardLandingPage`, `SignupForm`)
+- **Files**: kebab-case matching component name (e.g., `dashboard-landing-page.tsx`)
+- **Props Interfaces**: Named `Props` when simple, descriptive names for complex interfaces
+
+## Component Structure
+```tsx
+// Export pattern - named exports preferred
+export function ComponentName({ prop1, prop2 }: Props) {
+  // Component logic
+  return (
+    <div>
+      {/* JSX */}
+    </div>
+  );
+}
+
+// Props interface when needed
+interface Props {
+  prop1: string;
+  prop2?: number;
+}
+```
+
+## Client vs Server Components
+- **Server Components**: Default, no directive needed
+- **Client Components**: Must have `'use client'` at top
+- **Examples**:
+  - Server: [src/components/dashboard/landing/dashboard-landing-page.tsx](mdc:src/components/dashboard/landing/dashboard-landing-page.tsx)
+  - Client: [src/components/home/home-page.tsx](mdc:src/components/home/home-page.tsx)
+
+## Styling Patterns
+- **Tailwind Classes**: Use `className` prop with Tailwind utilities
+- **Conditional Classes**: Use `cn()` utility from [src/lib/utils.ts](mdc:src/lib/utils.ts)
+- **Custom CSS**: Import specific CSS files (e.g., `'../../styles/home-page.css'`)
+
+## Component Composition
+- **Layout Components**: Accept `children` prop with `ReactNode` type
+- **Icon Usage**: Lucide React icons (configured in [components.json](mdc:components.json))
+- **Image Handling**: Next.js `Image` component for optimized images
+
+## State Management
+- **Local State**: `useState` hook in client components
+- **Form State**: Server actions for form submissions
+- **Global State**: Supabase for user data and authentication
+
+## Import Patterns
+- **Relative Imports**: For same-level or nearby files
+- **Absolute Imports**: Use `@/` alias for src directory
+- **External Libraries**: Standard npm package imports
+- **Example**: `import { cn } from '@/lib/utils';`

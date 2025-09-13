@@ -1,0 +1,81 @@
+---
+globs: *.tsx,*.css
+---
+
+# Styling & UI Patterns
+
+## UI Component Library
+- **Base**: shadcn/ui components in [src/components/ui/](mdc:src/components/ui/)
+- **Config**: [components.json](mdc:components.json) - shadcn/ui configuration
+- **Icons**: Lucide React (configured as default icon library)
+- **Primitives**: Radix UI components for accessibility
+
+## Tailwind CSS Setup
+- **Version**: Tailwind CSS 4.1.13
+- **Base Styles**: [src/styles/globals.css](mdc:src/styles/globals.css)
+- **CSS Variables**: Enabled for theme customization
+- **Animations**: `tailwindcss-animate` plugin for transitions
+
+## Styling Conventions
+```tsx
+// Use cn() utility for conditional classes
+import { cn } from '@/lib/utils';
+
+<div className={cn(
+  'base-classes',
+  {
+    'conditional-class': condition,
+    'another-class': anotherCondition
+  }
+)} />
+
+// Standard Tailwind patterns
+<div className="flex items-center gap-3 px-4 py-3 rounded-lg" />
+```
+
+## CSS File Organization
+- **Global Styles**: [src/styles/globals.css](mdc:src/styles/globals.css)
+- **Layout Styles**: [src/styles/layout.css](mdc:src/styles/layout.css)
+- **Feature Styles**: Page-specific CSS (e.g., `home-page.css`, `dashboard.css`)
+- **Component Styles**: Import specific CSS files when needed
+
+## Component Styling Patterns
+- **Layout Components**: Grid and flexbox for responsive layouts
+- **Cards**: Use shadcn/ui Card components for content containers
+- **Forms**: shadcn/ui Input, Label, Button components
+- **Navigation**: Custom styling with active state management
+
+## Responsive Design
+```tsx
+// Mobile-first responsive classes
+<div className="grid md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]" />
+
+// Responsive spacing and sizing
+<div className="p-4 md:p-6 lg:p-8" />
+```
+
+## Color System
+- **CSS Variables**: Use Tailwind's CSS variable system
+- **Theme Colors**: Defined in global CSS with proper contrast ratios
+- **Semantic Colors**: Background, foreground, muted, accent variations
+
+## Animation & Effects
+- **Transitions**: Use `tailwindcss-animate` classes
+- **Hover States**: Interactive elements should have hover effects
+- **Focus States**: Accessible focus indicators for keyboard navigation
+
+## Gradient Components
+- **Custom Gradients**: Dedicated components in [src/components/gradients/](mdc:src/components/gradients/)
+- **Background Effects**: SVG-based background patterns and effects
+- **Examples**: `DashboardGradient`, `HomePageBackground`
+
+## Image Handling
+- **Next.js Image**: Use `next/image` for optimized images
+- **SVG Icons**: Stored in `/public/assets/icons/`
+- **Background Images**: SVG patterns in `/public/assets/background/`
+
+## Accessibility Standards
+- **Semantic HTML**: Use proper HTML elements
+- **ARIA Labels**: For complex interactive elements
+- **Keyboard Navigation**: Ensure all interactive elements are keyboard accessible
+- **Color Contrast**: Follow WCAG guidelines for text contrast

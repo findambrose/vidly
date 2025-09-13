@@ -1,0 +1,94 @@
+---
+globs: *.ts,*.tsx
+---
+
+# TypeScript & Code Quality Standards
+
+## TypeScript Configuration
+- **Config**: [tsconfig.json](mdc:tsconfig.json) with strict mode enabled
+- **Path Mapping**: `@/*` maps to `./src/*` for absolute imports
+- **Target**: ES2015 with modern module resolution
+
+## Type Definitions
+- **Location**: [src/lib/](mdc:src/lib/) for shared types
+- **API Types**: [src/lib/api.types.ts](mdc:src/lib/api.types.ts)
+- **Database Types**: [src/lib/database.types.ts](mdc:src/lib/database.types.ts)
+
+## Type Patterns
+```tsx
+// Interface for component props
+interface Props {
+  required: string;
+  optional?: number;
+  children?: ReactNode;
+}
+
+// Type for API responses
+interface ApiResponse<T> {
+  data: T;
+  error?: string;
+}
+
+// Generic utility types
+type FormData = {
+  email: string;
+  password: string;
+}
+```
+
+## Import Standards
+- **Absolute Imports**: Use `@/` prefix for internal modules
+- **External Libraries**: Standard npm package imports
+- **Type Imports**: Use `import type` for type-only imports
+- **Example**: `import type { Metadata } from 'next';`
+
+## Code Quality Tools
+- **ESLint**: [eslint.config.mjs](mdc:eslint.config.mjs) with Next.js and TypeScript rules
+- **Prettier**: Configured for consistent formatting
+- **Scripts**: 
+  - `pnpm lint` - Check for issues
+  - `pnpm lint:fix` - Auto-fix issues
+  - `pnpm prettier` - Format code
+
+## Strict TypeScript Rules
+- **No Implicit Any**: All variables must have explicit types
+- **Strict Null Checks**: Handle undefined/null cases
+- **No Unused Variables**: Remove unused imports and variables
+- **Explicit Return Types**: For complex functions, prefer explicit return types
+
+## React TypeScript Patterns
+```tsx
+// Component with props
+export function Component({ title, count }: Props) {
+  return <div>{title}: {count}</div>;
+}
+
+// Server Component (default)
+export default async function Page() {
+  // Server-side logic
+  return <div>Content</div>;
+}
+
+// Client Component
+'use client';
+export function InteractiveComponent() {
+  const [state, setState] = useState<string>('');
+  // Client-side logic
+}
+```
+
+## Utility Types Usage
+- **ReactNode**: For children props
+- **Readonly**: For immutable data structures
+- **Partial**: For optional object properties
+- **Pick/Omit**: For selective type extraction
+
+## Error Handling Types
+```tsx
+interface ErrorResponse {
+  error: string;
+}
+
+// Union types for different outcomes
+type Result<T> = T | ErrorResponse;
+```

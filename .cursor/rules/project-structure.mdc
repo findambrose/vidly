@@ -1,0 +1,54 @@
+---
+alwaysApply: true
+---
+
+# Project Structure & Architecture
+
+This is a **Paddle Billing Next.js SaaS starter kit** built with modern web technologies.
+
+## Technology Stack
+- **Framework**: Next.js 15.5.2 with App Router
+- **Language**: TypeScript 5.9.2
+- **Authentication**: Supabase (SSR-compatible)
+- **Billing**: Paddle Billing (v3.2.1)
+- **UI Library**: shadcn/ui with Radix UI primitives
+- **Styling**: Tailwind CSS 4.1.13
+- **Package Manager**: pnpm
+- **Database**: Supabase PostgreSQL
+
+## Key Directories
+
+### `/src/app/` - Next.js App Router
+- **Pages**: [page.tsx](mdc:src/app/page.tsx) files define routes
+- **Layouts**: [layout.tsx](mdc:src/app/layout.tsx) files provide shared UI
+- **API Routes**: `/api/` directory for backend endpoints
+- **Server Actions**: `actions.ts` files for form handling
+
+### `/src/components/` - React Components
+- **UI Components**: [src/components/ui/](mdc:src/components/ui/) - shadcn/ui primitives
+- **Feature Components**: Organized by domain (dashboard, home, authentication, checkout)
+- **Layout Components**: Dashboard layout, headers, sidebars
+- **Shared Components**: Reusable components across features
+
+### `/src/utils/` - Utility Functions
+- **Paddle Integration**: [src/utils/paddle/](mdc:src/utils/paddle/) - billing logic
+- **Supabase Integration**: [src/utils/supabase/](mdc:src/utils/supabase/) - auth & database
+- **Type Definitions**: [src/lib/](mdc:src/lib/) - API and database types
+
+### `/supabase/` - Database
+- **Migrations**: [supabase/migrations/](mdc:supabase/migrations/) - database schema
+- **Config**: [supabase/config.toml](mdc:supabase/config.toml) - local development setup
+
+## Key Files
+- [package.json](mdc:package.json) - Dependencies and scripts
+- [components.json](mdc:components.json) - shadcn/ui configuration
+- [tsconfig.json](mdc:tsconfig.json) - TypeScript configuration with `@/*` path mapping
+- [next.config.mjs](mdc:next.config.mjs) - Next.js configuration
+- [eslint.config.mjs](mdc:eslint.config.mjs) - ESLint configuration
+
+## Architecture Patterns
+- **Server Components**: Default for data fetching and static content
+- **Client Components**: Marked with `'use client'` for interactivity
+- **Server Actions**: For form submissions and mutations
+- **Middleware**: [src/middleware.ts](mdc:src/middleware.ts) for auth protection
+- **Webhooks**: [src/app/api/webhook/route.ts](mdc:src/app/api/webhook/route.ts) for Paddle events
