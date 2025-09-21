@@ -3,7 +3,7 @@ import '../styles/globals.css';
 import '../styles/layout.css';
 import { ReactNode } from 'react';
 import type { Metadata } from 'next';
-import { Toaster } from '@/components/ui/toaster';
+import { Toaster } from '@/components/ui/sonner';
 
 const inter = Inter({ subsets: ['latin'] });
 

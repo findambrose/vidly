@@ -1,0 +1,45 @@
+{
+  "model": "moonshotai/kimi-k2:free",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a TikTok content creator expert. Create engaging, concise scripts for 15-second videos that will go viral. Focus on hooks, trending topics, and engaging narratives that capture viewers' attention immediately."
+    },
+    {
+      "role": "user",
+      "content": "Create a 15-second TikTok script about the trending topic: {{ $('Get Trend Data').first().json.title }}.\n\nDescription: {{ $('Get Trend Data').first().json.description }}\n\nSource: {{ $('Get Trend Data').first().json.source || 'General trend' }}\n\nThe script should be conversational, engaging, and include a strong hook in the first 3 seconds. Format it as direct speech without stage directions. Keep it under 100 words and make it sound natural for voiceover."
+    }
+  ],
+  "max_tokens": 300,
+  "temperature": 0.8,
+  "user": "{{ $('Webhook').first().json.userId }}",
+  "response_format": {
+    "type": "json_schema",
+    "json_schema": {
+      "name": "tiktok_script",
+      "strict": true,
+      "schema": {
+        "type": "object",
+        "properties": {
+          "script_text": {
+            "type": "string",
+            "description": "The complete TikTok script text ready for voiceover"
+          },
+          "hook": {
+            "type": "string",
+            "description": "The first 3-second hook of the video"
+          },
+          "engagement_elements": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Key elements that make the script engaging"
+          }
+        },
+        "required": ["script_text", "hook", "engagement_elements"],
+        "additionalProperties": false
+      }
+    }
+  }
+}

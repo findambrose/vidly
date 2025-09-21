@@ -1,6 +1,5 @@
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
 import { Transaction } from '@paddle/paddle-node-sdk';
 import dayjs from 'dayjs';
 import { parseMoney } from '@/utils/paddle/parse-money';
@@ -10,15 +9,21 @@ import { getPaymentReason } from '@/utils/paddle/data-helpers';
 interface Props {
   subscriptionId: string;
   transactions?: Transaction[];
+  onViewAll?: () => void;
 }
 
-export function SubscriptionPastPaymentsCard({ subscriptionId, transactions }: Props) {
+export function SubscriptionPastPaymentsCard({ subscriptionId, transactions, onViewAll }: Props) {
   return (
     <Card className={'bg-background/50 backdrop-blur-[24px] border-border p-6 @container'}>
       <CardTitle className="flex justify-between items-center pb-6 border-border border-b flex-wrap">
         <span className={'text-xl font-medium'}>Payments</span>
-        <Button asChild={true} size={'sm'} variant={'outline'} className={'text-sm rounded-sm border-border'}>
-          <Link href={`/dashboard/payments/${subscriptionId}`}>View all</Link>
+        <Button
+          size={'sm'}
+          variant={'outline'}
+          className={'text-sm rounded-sm border-border'}
+          onClick={onViewAll}
+        >
+          View all
         </Button>
       </CardTitle>
       <CardContent className={'p-0'}>

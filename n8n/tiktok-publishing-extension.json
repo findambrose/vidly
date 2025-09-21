@@ -1,0 +1,593 @@
+{
+  "name": "TikTok Publishing Extension",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "social_connections",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "keyValue": "={{ $('Webhook').item.json.body.userId }}"
+            },
+            {
+              "keyName": "platform",
+              "keyValue": "tiktok"
+            },
+            {
+              "keyName": "is_active",
+              "keyValue": true
+            }
+          ]
+        }
+      },
+      "id": "check-tiktok-connection",
+      "name": "Check TikTok Connection",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -4800,
+        16
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "your-supabase-credentials-id",
+          "name": "Supabase API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.length > 0 }}",
+              "operation": "equal",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-tiktok-connected",
+      "name": "IF TikTok Connected",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -4600,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check if token is expired\nconst connection = $input.first().json[0];\n\nif (!connection) {\n  return { json: { hasValidToken: false, reason: 'No connection found' } };\n}\n\nconst expiresAt = new Date(connection.expires_at);\nconst now = new Date();\n\nif (expiresAt <= now) {\n  return { \n    json: { \n      hasValidToken: false, \n      reason: 'Token expired',\n      connection: connection\n    } \n  };\n}\n\n// Token is valid\nreturn {\n  json: {\n    hasValidToken: true,\n    connection: connection,\n    accessToken: connection.access_token,\n    username: connection.platform_username\n  }\n};"
+      },
+      "id": "validate-token",
+      "name": "Validate Token",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4400,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasValidToken }}",
+              "operation": "equal",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-token-valid",
+      "name": "IF Token Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -4200,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.tiktokapis.com/v2/post/publish/video/init/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Validate Token').item.json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"post_info\": {\n    \"title\": \"{{ $('Poll Shotstack Status').first().json.response.data.title || $('Get Trend Data').first().json.title }}\",\n    \"description\": \"{{ JSON.parse($('Generate Script (OpenRouter - Kimi K2)').item.json.choices[0].message.content).script_text }}\",\n    \"privacy_level\": \"PUBLIC_TO_EVERYONE\",\n    \"disable_duet\": false,\n    \"disable_comment\": false,\n    \"disable_stitch\": false,\n    \"video_cover_timestamp_ms\": 1000\n  },\n  \"source_info\": {\n    \"source\": \"PULL_FROM_URL\",\n    \"video_url\": \"{{ $('Poll Shotstack Status').first().json.response.url }}\"\n  }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "initiate-tiktok-upload",
+      "name": "Initiate TikTok Upload",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -4000,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.error }}",
+              "operation": "isEmpty"
+            }
+          ]
+        }
+      },
+      "id": "if-upload-initiated",
+      "name": "IF Upload Initiated",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -3800,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "unit": "seconds",
+        "amount": 5
+      },
+      "id": "wait-before-status-check",
+      "name": "Wait Before Status Check",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        -3600,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.tiktokapis.com/v2/post/publish/status/fetch/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Validate Token').item.json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"publish_id\": \"{{ $('Initiate TikTok Upload').item.json.data.publish_id }}\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "check-tiktok-status",
+      "name": "Check TikTok Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -3400,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.data.status }}",
+              "operation": "equal",
+              "value2": "PROCESSING_UPLOAD"
+            }
+          ]
+        }
+      },
+      "id": "if-still-processing",
+      "name": "IF Still Processing",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -3200,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "unit": "seconds",
+        "amount": 10
+      },
+      "id": "wait-retry",
+      "name": "Wait Before Retry",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        -3000,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.data.status }}",
+              "operation": "equal",
+              "value2": "PUBLISH_COMPLETE"
+            }
+          ]
+        }
+      },
+      "id": "if-publish-complete",
+      "name": "IF Publish Complete",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -3000,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "user_videos",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $('Create Video Record').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "publishing_status",
+              "fieldValue": "published"
+            },
+            {
+              "fieldId": "published_url",
+              "fieldValue": "={{ $('Check TikTok Status').item.json.data.share_url || 'https://tiktok.com/@' + $('Validate Token').item.json.username }}"
+            },
+            {
+              "fieldId": "platform_post_id",
+              "fieldValue": "={{ $('Initiate TikTok Upload').item.json.data.publish_id }}"
+            },
+            {
+              "fieldId": "published_at",
+              "fieldValue": "={{ $now }}"
+            }
+          ]
+        }
+      },
+      "id": "update-video-published",
+      "name": "Update Video as Published",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -2800,
+        -300
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "your-supabase-credentials-id",
+          "name": "Supabase API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "user_videos",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $('Create Video Record').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "publishing_status",
+              "fieldValue": "publish_failed"
+            },
+            {
+              "fieldId": "publish_error",
+              "fieldValue": "={{ $json.error ? $json.error.message : 'TikTok publishing failed' }}"
+            }
+          ]
+        }
+      },
+      "id": "update-video-failed",
+      "name": "Update Video as Failed",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -2800,
+        -100
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "your-supabase-credentials-id",
+          "name": "Supabase API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "user_videos",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $('Create Video Record').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "publishing_status",
+              "fieldValue": "publishing"
+            }
+          ]
+        }
+      },
+      "id": "update-video-publishing",
+      "name": "Update Video as Publishing",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -3600,
+        -200
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "your-supabase-credentials-id",
+          "name": "Supabase API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "social_connections",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "keyValue": "={{ $('Webhook').item.json.body.userId }}"
+            },
+            {
+              "keyName": "platform",
+              "keyValue": "tiktok"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "last_used_at",
+              "fieldValue": "={{ $now }}"
+            }
+          ]
+        }
+      },
+      "id": "update-last-used",
+      "name": "Update Last Used",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -2600,
+        -300
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "your-supabase-credentials-id",
+          "name": "Supabase API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Check TikTok Connection": {
+      "main": [
+        [
+          {
+            "node": "IF TikTok Connected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF TikTok Connected": {
+      "main": [
+        [
+          {
+            "node": "Validate Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Token": {
+      "main": [
+        [
+          {
+            "node": "IF Token Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Token Valid": {
+      "main": [
+        [
+          {
+            "node": "Initiate TikTok Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initiate TikTok Upload": {
+      "main": [
+        [
+          {
+            "node": "IF Upload Initiated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Upload Initiated": {
+      "main": [
+        [
+          {
+            "node": "Update Video as Publishing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Video as Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Video as Publishing": {
+      "main": [
+        [
+          {
+            "node": "Wait Before Status Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Before Status Check": {
+      "main": [
+        [
+          {
+            "node": "Check TikTok Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check TikTok Status": {
+      "main": [
+        [
+          {
+            "node": "IF Still Processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Still Processing": {
+      "main": [
+        [
+          {
+            "node": "Wait Before Retry",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF Publish Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Before Retry": {
+      "main": [
+        [
+          {
+            "node": "Check TikTok Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Publish Complete": {
+      "main": [
+        [
+          {
+            "node": "Update Video as Published",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Video as Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Video as Published": {
+      "main": [
+        [
+          {
+            "node": "Update Last Used",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

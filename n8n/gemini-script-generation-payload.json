@@ -1,0 +1,35 @@
+{
+  "contents": [
+    {
+      "parts": [
+        {
+          "text": "You are a TikTok content creator expert. Create engaging, concise scripts for {{ $('Get User Preferences').first().json.preferred_video_length || 15 }}-second videos that will go viral. Focus on hooks, trending topics, and engaging narratives that capture viewers' attention immediately.\n\nTONE: Use a {{ $('Get User Preferences').first().json.tone_of_voice || 'enthusiastic' }} tone throughout the script. Adapt your writing style accordingly:\n- enthusiastic: Use excited, energetic language with exclamation points and dynamic phrases\n- professional: Use clear, authoritative language that's informative yet engaging\n- casual: Use relaxed, conversational language like talking to a friend\n- humorous: Use wit, jokes, and playful language to entertain\n\nCreate a {{ $('Get User Preferences').first().json.preferred_video_length || 15 }}-second TikTok script about the trending topic: {{ $('Get Trend Data').first().json.title }}.\n\nDescription: {{ $('Get Trend Data').first().json.description }}\n\nSource: {{ $('Get Trend Data').first().json.source || 'General trend' }}\n\nContent Focus: Align the script with these content pillars: {{ ($('Get User Preferences').first().json.content_pillars || ['Education', 'Entertainment', 'Inspiration']).join(', ') }}. Make sure the content fits at least one of these themes.\n\nThe script should be {{ $('Get User Preferences').first().json.tone_of_voice || 'enthusiastic' }}, engaging, and include a strong hook in the first 3 seconds. Format it as direct speech without stage directions. Keep it under 100 words and make it sound natural for voiceover. End with the call-to-action: {{ $('Get User Preferences').first().json.default_cta || 'Like and follow for more!' }}\n\nRespond with ONLY the script text, no additional formatting or explanations."
+        }
+      ]
+    }
+  ],
+  "generationConfig": {
+    "temperature": 0.8,
+    "maxOutputTokens": 300,
+    "topP": 0.95,
+    "topK": 40
+  },
+  "safetySettings": [
+    {
+      "category": "HARM_CATEGORY_HARASSMENT",
+      "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+    },
+    {
+      "category": "HARM_CATEGORY_HATE_SPEECH",
+      "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+    },
+    {
+      "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+      "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+    },
+    {
+      "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+      "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+    }
+  ]
+}

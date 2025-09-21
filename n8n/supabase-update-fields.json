@@ -1,0 +1,34 @@
+[
+  {
+    "fieldName": "status",
+    "fieldValue": "completed"
+  },
+  {
+    "fieldName": "final_video_url",
+    "fieldValue": "{{ $('Render Video (Shotstack)').first().json.response.url }}"
+  },
+  {
+    "fieldName": "background_video_url",
+    "fieldValue": "{{ $('Get Background Video (Pexels)').first().json.videos[0].video_files[0].link }}"
+  },
+  {
+    "fieldName": "thumbnail_url",
+    "fieldValue": "{{ $('Get Background Video (Pexels)').first().json.videos[0].image }}"
+  },
+  {
+    "fieldName": "generation_completed_at",
+    "fieldValue": "{{ $now }}"
+  },
+  {
+    "fieldName": "duration_seconds",
+    "fieldValue": "15"
+  },
+  {
+    "fieldName": "resolution",
+    "fieldValue": "720x1280"
+  },
+  {
+    "fieldName": "aspect_ratio",
+    "fieldValue": "9:16"
+  }
+]

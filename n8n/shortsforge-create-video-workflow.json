@@ -1,0 +1,838 @@
+{
+  "name": "Video Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\\nlet text;\\n\\ntry {\\n  if (response.candidates?.[0]?.content?.parts?.[0]?.text) {\\n    text = response.candidates[0].content.parts[0].text.trim();\\n  } else {\\n    throw new Error('No text in response');\\n  }\\n} catch (error) {\\n  text = \\\"Default script for trending topic. Subscribe for more content!\\\";\\n}\\n\\nreturn {\\n  json: {\\n    script_text: text\\n  }\\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2336,
+        352
+      ],
+      "id": "78accd52-e239-42f2-8f98-f9a8699e52bc",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "user_videos",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "failed"
+            },
+            {
+              "fieldId": "error_message",
+              "fieldValue": "={{ $('Poll Shotstack Status').first().json.response.error || 'Video rendering failed' }}"
+            },
+            {
+              "fieldId": "generation_completed_at",
+              "fieldValue": "={{ $now }}"
+            }
+          ]
+        }
+      },
+      "id": "2891fb12-3ccf-477a-b6ba-36127af5d2ac",
+      "name": "Update Video Record (Failed)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        96,
+        632
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xmKD2hb33hjFVl4u",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "user_videos",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Create Supabase Video MetaData').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "completed"
+            },
+            {
+              "fieldId": "final_video_url",
+              "fieldValue": "={{ $('Poll Shotstack Status').first().json.response.url }}"
+            },
+            {
+              "fieldId": "background_video_url",
+              "fieldValue": "={{ (() => { const videos = $('Get Background Video (Pexels)').first().json.videos; const randomIndex = Math.floor(Math.random() * videos.length); const selectedVideo = videos[randomIndex]; return selectedVideo.video_files.find(file => file.width === 720 && file.height === 1280)?.link || selectedVideo.video_files[0].link; })() }}"
+            },
+            {
+              "fieldId": "thumbnail_url",
+              "fieldValue": "={{ (() => { const videos = $('Get Background Video (Pexels)').first().json.videos; const randomIndex = Math.floor(Math.random() * videos.length); return videos[randomIndex].image; })() }}"
+            },
+            {
+              "fieldId": "generation_completed_at",
+              "fieldValue": "={{ $now }}"
+            },
+            {
+              "fieldId": "duration_seconds",
+              "fieldValue": "15"
+            },
+            {
+              "fieldId": "resolution",
+              "fieldValue": "720x1280"
+            },
+            {
+              "fieldId": "aspect_ratio",
+              "fieldValue": "9:16"
+            }
+          ]
+        }
+      },
+      "id": "109e275c-4cc4-4376-85ee-4040eff2bc8c",
+      "name": "Update Video Record (Success)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -128,
+        272
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xmKD2hb33hjFVl4u",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $secrets.N8N_WEBHOOK_URL || 'http://localhost:5678' }}/webhook/shortsforge-publish-video",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"videoId\": \"{{ $('Create Supabase Video MetaData').item.json.id }}\",\n  \"userId\": \"{{ $('Webhook').item.json.body.userId }}\",\n  \"publishAction\": \"{{ $('Webhook').item.json.body.publishAction || 'none' }}\",\n  \"videoUrl\": \"{{ $('Poll Shotstack Status').first().json.response.url }}\",\n  \"title\": \"{{ $('Get Trend Data').item.json.title }}\",\n  \"scriptText\": \"{{ $('Generate Script').item.json.candidates[0].content.parts[0].text }}\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 10000
+        },
+        "onError": "continueRegularOutput"
+      },
+      "id": "call-publishing-workflow",
+      "name": "Call Publishing Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        96,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "id": "44a66dbd-4e5d-4aa3-9756-cd8b243ac31b",
+      "name": "Wait Before Retry",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        96,
+        440
+      ],
+      "webhookId": "05574c4a-6057-410d-8b2a-78d2480359cf"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.response.status }}",
+              "rightValue": "failed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6635f93e-427e-4fe8-b9b8-e316b9df15bf",
+      "name": "Check if Failed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        464
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.response.status }}",
+              "rightValue": "done",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1d4c1519-d03b-486b-bbba-7a34b919eb7c",
+      "name": "Check if Done",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -352,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.shotstack.io/edit/v1/render/{{ $('Render Video (Shotstack)').first().json.response.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "=N7ygbh8B2w1w2oBhWqa4t03IQIJCitVTA2A2QrI1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e6c72c8e-2479-4ac3-8cc7-251d6748a0aa",
+      "name": "Poll Shotstack Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -576,
+        344
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "id": "82ccf254-ffc7-4414-8001-070f3e4a62cc",
+      "name": "Wait for Render Start",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        -800,
+        344
+      ],
+      "webhookId": "a50231d4-800e-4b2f-aa5b-0d2899b0f3e6"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.shotstack.io/edit/v1/render",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "=N7ygbh8B2w1w2oBhWqa4t03IQIJCitVTA2A2QrI1"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"timeline\": {\n    \"background\": \"#000000\",\n    \"tracks\": [\n      {\n        \"clips\": [\n          {\n            \"asset\": {\n              \"type\": \"video\",\n              \"src\": \"{{ (() => { const videos = $('Get Background Video (Pexels)').first().json.videos; const randomIndex = Math.floor(Math.random() * videos.length); const selectedVideo = videos[randomIndex]; return selectedVideo.video_files.find(file => file.width === 720 && file.height === 1280)?.link || selectedVideo.video_files[0].link; })() }}\",\n              \"volume\": 0.1\n            },\n            \"start\": 0,\n            \"length\": {{ $('Get User Preferences').first().json.preferred_video_length || 15 }},\n            \"fit\": \"crop\",\n            \"scale\": 1\n          }\n        ]\n      },\n      {\n        \"clips\": [\n          {\n            \"asset\": {\n              \"type\": \"audio\",\n              \"src\": \"https://zboemxtwwxnweawzqjop.supabase.co/storage/v1/object/public/{{$('HTTP Request').first().json.Key}}\",\n              \"volume\": 1\n            },\n            \"start\": 0,\n            \"length\": {{ $('Get User Preferences').first().json.preferred_video_length || 15 }}\n          }\n        ]\n      },\n      {\n        \"clips\": [\n          {\n            \"asset\": {\n              \"type\": \"title\",\n              \"text\": \"{{ $('Get Trend Data').first().json.title }}\",\n              \"style\": \"{{ (() => {\n                const style = $('Get User Preferences').first().json.video_style_preference || 'modern';\n                switch(style) {\n                  case 'modern': return 'future';\n                  case 'classic': return 'subtitle';\n                  case 'minimal': return 'minimal';\n                  case 'bold': return 'blockbuster';\n                  default: return 'future';\n                }\n              })() }}\",\n              \"color\": \"#ffffff\",\n              \"size\": \"medium\",\n              \"background\": \"{{ $('Get User Preferences').first().json.brand_color || '#3b82f6' }}\",\n              \"position\": \"center\"\n            },\n            \"start\": 0,\n            \"length\": 3,\n            \"transition\": {\n              \"in\": \"fade\",\n              \"out\": \"fade\"\n            }\n          }\n        ]\n      }\n    ]\n  },\n  \"output\": {\n    \"format\": \"mp4\",\n    \"resolution\": \"sd\",\n    \"aspectRatio\": \"9:16\",\n    \"fps\": 25,\n    \"scaleTo\": \"mobile\"\n  }\n}",
+        "options": {}
+      },
+      "id": "854cbedb-ddde-415f-8788-f86e9dc03426",
+      "name": "Render Video (Shotstack)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1024,
+        344
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.pexels.com/videos/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $('Get Trend Data').item.json.title }} trending popular viral"
+            },
+            {
+              "name": "orientation",
+              "value": "portrait"
+            },
+            {
+              "name": "size",
+              "value": "large"
+            },
+            {
+              "name": "per_page",
+              "value": "5"
+            },
+            {
+              "name": "duration_min",
+              "value": "10"
+            },
+            {
+              "name": "duration_max",
+              "value": "20"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=ALIbj1fgNdbzy8cujwEFVMKNihuTRiMApR6A6B5lZEbhEQEE26IQIFH8"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "94fa5109-3339-485e-a58e-4fe52b3a941b",
+      "name": "Get Background Video (Pexels)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1248,
+        344
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://zboemxtwwxnweawzqjop.supabase.co/storage/v1/object/Voiceovers/{{ $('Webhook').item.json.body.userId }}/{{ $now.format('yyyyMMdd_HHmmss') }}-voiceover.mp3",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "audio/mpeg"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1776,
+        352
+      ],
+      "id": "dc02d675-cab8-4527-ba8a-5ada0b999ef4",
+      "name": "HTTP Request",
+      "credentials": {
+        "supabaseApi": {
+          "id": "xmKD2hb33hjFVl4u",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "user_videos",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $('Webhook').item.json.body.userId }}"
+            },
+            {
+              "fieldId": "trend_id",
+              "fieldValue": "={{ $('Webhook').item.json.body.trendId }}"
+            },
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ $('Get Trend Data').item.json.title }}"
+            },
+            {
+              "fieldId": "description",
+              "fieldValue": "={{ $('Get Trend Data').item.json.description }}"
+            },
+            {
+              "fieldId": "script_text",
+              "fieldValue": "={{ $('Generate Script').item.json.candidates?.[0]?.content?.parts?.[0]?.text || 'Fallback script used due to API error' }}"
+            },
+            {
+              "fieldId": "voiceover_url",
+              "fieldValue": "={{ $json.Key }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "processing"
+            },
+            {
+              "fieldId": "generation_started_at",
+              "fieldValue": "=: {{ $now }} "
+            },
+            {
+              "fieldId": "generation_settings",
+              "fieldValue": "={\n  \"voice_id\": \"{{ $('Get User Preferences').first().json.ai_voice_id || '21m00Tcm4TlvDq8ikWAM' }}\",\n  \"model_used\": \"google/gemini-2.5-flash\",\n  \"trend_source\": \"{{ $('Get Trend Data').first().json.source }}\"\n}\n"
+            }
+          ]
+        }
+      },
+      "id": "680b3170-83b5-436a-922d-0705eedbbbaa",
+      "name": "Create Supabase Video MetaData",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1520,
+        352
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xmKD2hb33hjFVl4u",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.elevenlabs.io/v1/text-to-speech/{{ $('Get User Preferences').first().json.ai_voice_id || 'JBFqnCBsd6RMkjVDRZzb' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "xi-api-key",
+              "value": "=sk_9e0cb01c454704ab6436acc54bfe81104197137d8540ee4a"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": {{ $json.script_text }},\n  \"model_id\": \"eleven_multilingual_v2\",\n  \"voice_settings\": {\n    \"stability\": {{ (() => {\n      const tone = $('Get User Preferences').first().json.tone_of_voice || 'enthusiastic';\n      switch(tone) {\n        case 'professional': return 0.8;\n        case 'casual': return 0.4;\n        case 'humorous': return 0.3;\n        case 'enthusiastic':\n        default: return 0.5;\n      }\n    })() }},\n    \"similarity_boost\": {{ (() => {\n      const tone = $('Get User Preferences').first().json.tone_of_voice || 'enthusiastic';\n      switch(tone) {\n        case 'professional': return 0.8;\n        case 'casual': return 0.6;\n        case 'humorous': return 0.5;\n        case 'enthusiastic':\n        default: return 0.75;\n      }\n    })() }},\n    \"style\": {{ (() => {\n      const tone = $('Get User Preferences').first().json.tone_of_voice || 'enthusiastic';\n      switch(tone) {\n        case 'professional': return 0.2;\n        case 'casual': return 0.4;\n        case 'humorous': return 0.8;\n        case 'enthusiastic':\n        default: return 0.6;\n      }\n    })() }},\n    \"use_speaker_boost\": true\n  },\n  \"output_format\": \"mp3_44100_128\"\n}",
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "id": "e005c7f9-9952-4ccc-876a-a0c0a2928ea6",
+      "name": "Generate Voiceover (ElevenLabs)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -2064,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "trends",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $('Respond to Webhook').item.json.body.trendId }}"
+            }
+          ]
+        }
+      },
+      "id": "3807d4b4-0eef-42d0-abd6-177417db008a",
+      "name": "Get Trend Data",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -2816,
+        344
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xmKD2hb33hjFVl4u",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "user_preferences",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "keyValue": "={{ $json.body.userId }}"
+            }
+          ]
+        }
+      },
+      "id": "97aac893-aaed-4e60-aef7-124360f54bdd",
+      "name": "Get User Preferences",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -3040,
+        344
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xmKD2hb33hjFVl4u",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": {
+          "success": true,
+          "message": "Video generation started",
+          "timestamp": "={{ $now }}"
+        },
+        "options": {}
+      },
+      "id": "5fbe8077-1d6d-4539-9f6c-20f788fae820",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -3264,
+        344
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "shortsforge-create-video",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "ec95f701-9e57-440d-886d-ea8d8b0c536d",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -3488,
+        344
+      ],
+      "webhookId": "shortsforge-create-video"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-goog-api-key",
+              "value": "AIzaSyDvVMd5ChhNohqtcP130oAZJ_DZwANQ2Us"
+            },
+            {
+              "name": "HTTP-Referer",
+              "value": "{{ $secrets.SITE_URL || 'https://localhost:3000' }}"
+            },
+            {
+              "name": "X-Title",
+              "value": "ShortsForge Video Generator"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"You are a TikTok content creator expert. Create engaging, concise scripts for {{ $('Get User Preferences').first().json.preferred_video_length || 15 }}-second videos that will go viral. Focus on hooks, trending topics, and engaging narratives that capture viewers' attention immediately.\\n\\nTONE: Use a {{ $('Get User Preferences').first().json.tone_of_voice || 'enthusiastic' }} tone throughout the script. Adapt your writing style accordingly:\\n- enthusiastic: Use excited, energetic language with exclamation points and dynamic phrases\\n- professional: Use clear, authoritative language that's informative yet engaging\\n- casual: Use relaxed, conversational language like talking to a friend\\n- humorous: Use wit, jokes, and playful language to entertain\\n\\nCreate a {{ $('Get User Preferences').first().json.preferred_video_length || 15 }}-second TikTok script about the trending topic: {{ $('Get Trend Data').first().json.title }}.\\n\\nDescription: {{ $('Get Trend Data').first().json.description }}\\n\\nSource: {{ $('Get Trend Data').first().json.source || 'General trend' }}\\n\\nContent Focus: Align the script with these content pillars: {{ ($('Get User Preferences').first().json.content_pillars || ['Education', 'Entertainment', 'Inspiration']).join(', ') }}. Make sure the content fits at least one of these themes.\\n\\nThe script should be {{ $('Get User Preferences').first().json.tone_of_voice || 'enthusiastic' }}, engaging, and include a strong hook in the first 3 seconds. Format it as direct speech without stage directions. Keep it under 100 words and make it sound natural for voiceover. End with the call-to-action: {{ $('Get User Preferences').first().json.default_cta || 'Like and follow for more!' }}\\n\\nRespond with ONLY the script text, no additional formatting or explanations.\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.8,\n    \"maxOutputTokens\": 1000,\n    \"topP\": 0.95,\n    \"topK\": 40\n  },\n  \"safetySettings\": [\n    {\n      \"category\": \"HARM_CATEGORY_HARASSMENT\",\n      \"threshold\": \"BLOCK_MEDIUM_AND_ABOVE\"\n    },\n    {\n      \"category\": \"HARM_CATEGORY_HATE_SPEECH\",\n      \"threshold\": \"BLOCK_MEDIUM_AND_ABOVE\"\n    },\n    {\n      \"category\": \"HARM_CATEGORY_SEXUALLY_EXPLICIT\",\n      \"threshold\": \"BLOCK_MEDIUM_AND_ABOVE\"\n    },\n    {\n      \"category\": \"HARM_CATEGORY_DANGEROUS_CONTENT\",\n      \"threshold\": \"BLOCK_MEDIUM_AND_ABOVE\"\n    }\n  ]\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        },
+        "onError": "continueRegularOutput"
+      },
+      "id": "91ce0c64-6759-4650-ad9d-43239b4681bc",
+      "name": "Generate Script",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -2592,
+        344
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Generate Voiceover (ElevenLabs)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Before Retry": {
+      "main": [
+        [
+          {
+            "node": "Poll Shotstack Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Failed": {
+      "main": [
+        [
+          {
+            "node": "Update Video Record (Failed)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait Before Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Done": {
+      "main": [
+        [
+          {
+            "node": "Update Video Record (Success)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check if Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poll Shotstack Status": {
+      "main": [
+        [
+          {
+            "node": "Check if Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Render Start": {
+      "main": [
+        [
+          {
+            "node": "Poll Shotstack Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render Video (Shotstack)": {
+      "main": [
+        [
+          {
+            "node": "Wait for Render Start",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Background Video (Pexels)": {
+      "main": [
+        [
+          {
+            "node": "Render Video (Shotstack)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Create Supabase Video MetaData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Supabase Video MetaData": {
+      "main": [
+        [
+          {
+            "node": "Get Background Video (Pexels)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Voiceover (ElevenLabs)": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Trend Data": {
+      "main": [
+        [
+          {
+            "node": "Generate Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get User Preferences": {
+      "main": [
+        [
+          {
+            "node": "Get Trend Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get User Preferences",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Script": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Video Record (Success)": {
+      "main": [
+        [
+          {
+            "node": "Call Publishing Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c5bfe6b6-882a-4a3a-b746-ad86b8a0cf1d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "947f992b8fb7b656db273be4ca5671437294e1faf55807f3ebc004a1f1588884"
+  },
+  "id": "wpZwhFYTRPxb4AQl",
+  "tags": []
+}

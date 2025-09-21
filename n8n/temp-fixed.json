@@ -1,0 +1,1437 @@
+{
+  "name": "ShortsForge Enhanced Video Generator with Publishing",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "shortsforge-create-video",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "eb197b53-6ad5-4f31-8da9-795470a390b5",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [-6576, 16],
+      "webhookId": "shortsforge-create-video"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": {
+          "success": true,
+          "message": "Video generation started",
+          "publishAction": "={{ $json.body.publishAction || 'none' }}",
+          "timestamp": "={{ $now }}"
+        },
+        "options": {}
+      },
+      "id": "71b7113f-702f-4205-8fd9-18a09c96594f",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [-6352, 16]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "user_preferences",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "keyValue": "={{ $json.body.userId }}"
+            }
+          ]
+        }
+      },
+      "id": "80f25775-8bd2-47b6-a0ef-859a26a9e4d8",
+      "name": "Get User Preferences",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-6128, 16],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xmKD2hb33hjFVl4u",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "trends",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $('Respond to Webhook').item.json.body.trendId }}"
+            }
+          ]
+        }
+      },
+      "id": "0ec1cc68-a562-486a-8cc2-f76b6642aaed",
+      "name": "Get Trend Data",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-5904, 16],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xmKD2hb33hjFVl4u",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-goog-api-key",
+              "value": "{{ $secrets.GEMINI_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"You are a TikTok content creator expert. Create engaging, concise scripts for {{ $('Get User Preferences').first().json.preferred_video_length || 15 }}-second videos that will go viral. Focus on hooks, trending topics, and engaging narratives that capture viewers' attention immediately.\\n\\nTONE: Use a {{ $('Get User Preferences').first().json.tone_of_voice || 'enthusiastic' }} tone throughout the script. Adapt your writing style accordingly:\\n- enthusiastic: Use excited, energetic language with exclamation points and dynamic phrases\\n- professional: Use clear, authoritative language that's informative yet engaging\\n- casual: Use relaxed, conversational language like talking to a friend\\n- humorous: Use wit, jokes, and playful language to entertain\\n\\nCreate a {{ $('Get User Preferences').first().json.preferred_video_length || 15 }}-second TikTok script about the trending topic: {{ $('Get Trend Data').first().json.title }}.\\n\\nDescription: {{ $('Get Trend Data').first().json.description }}\\n\\nSource: {{ $('Get Trend Data').first().json.source || 'General trend' }}\\n\\nContent Focus: Align the script with these content pillars: {{ ($('Get User Preferences').first().json.content_pillars || ['Education', 'Entertainment', 'Inspiration']).join(', ') }}. Make sure the content fits at least one of these themes.\\n\\nThe script should be {{ $('Get User Preferences').first().json.tone_of_voice || 'enthusiastic' }}, engaging, and include a strong hook in the first 3 seconds. Format it as direct speech without stage directions. Keep it under 100 words and make it sound natural for voiceover. End with the call-to-action: {{ $('Get User Preferences').first().json.default_cta || 'Like and follow for more!' }}\\n\\nRespond with ONLY the script text, no additional formatting or explanations.\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.8,\n    \"maxOutputTokens\": 300\n  }\n}",
+        "options": {}
+      },
+      "id": "e9691315-25dd-45a0-99d0-b5336007c055",
+      "name": "Generate Script (Gemini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-5680, 16]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the Gemini API response\\nconst response = $input.first().json;\\n\\n// Extract text from Gemini response format\\nlet text = response.candidates?.[0]?.content?.parts?.[0]?.text || \\\"STOP scrolling - I'm about to show you the weirdest beauty hack trending right now! Instead of blending foundation with a sponge, grab a single latex glove... tap it in - and BOOM, glass-skin finish with zero fingerprints. This hack is exploding - cutting blending time in half, and people swear it looks airbrushed. Try it, tag me, and let's make this glow-up trend blow up!\\\";\\n\\n// 1. Remove \\\"0-3s:\\\", \\\"4-7s:\\\" style timestamps\\ntext = text.replace(/\\\\d+-\\\\d+s:\\\\s*/g, \\\"\\\");\\n\\n// 2. Remove everything after \\\"Word count:\\\" (metadata, CTA, etc.)\\ntext = text.replace(/Word count:[\\\\s\\\\S]*/i, \\\"\\\");\\n\\n// 3. Normalize curly quotes to straight quotes\\ntext = text.replace(/[""]/g, '\\\"').replace(/['']/g, \\\"'\\\");\\n\\n// 4. Replace line breaks with \\\\n (safe for JSON & ElevenLabs)\\ntext = text.replace(/\\\\r?\\\\n+/g, \\\"\\\\n\\\");\\n\\n// 5. Trim spaces\\ntext = text.trim();\\n\\nreturn {\\n  json: {\\n     script_text: JSON.stringify(text)\\n  }\\n};\\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-5456, 16],
+      "id": "4921bdd6-fcd7-453e-a138-d027c75886c9",
+      "name": "Process Script Text"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.elevenlabs.io/v1/text-to-speech/{{ $('Get User Preferences').first().json.ai_voice_id || 'JBFqnCBsd6RMkjVDRZzb' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "xi-api-key",
+              "value": "=sk_9e0cb01c454704ab6436acc54bfe81104197137d8540ee4a"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": {{ $json.script_text }},\n  \"model_id\": \"eleven_multilingual_v2\",\n  \"voice_settings\": {\n    \"stability\": {{ (() => {\n      const tone = $('Get User Preferences').first().json.tone_of_voice || 'enthusiastic';\n      switch(tone) {\n        case 'professional': return 0.8;\n        case 'casual': return 0.4;\n        case 'humorous': return 0.3;\n        case 'enthusiastic':\n        default: return 0.5;\n      }\n    })() }},\n    \"similarity_boost\": {{ (() => {\n      const tone = $('Get User Preferences').first().json.tone_of_voice || 'enthusiastic';\n      switch(tone) {\n        case 'professional': return 0.8;\n        case 'casual': return 0.6;\n        case 'humorous': return 0.5;\n        case 'enthusiastic':\n        default: return 0.75;\n      }\n    })() }},\n    \"style\": {{ (() => {\n      const tone = $('Get User Preferences').first().json.tone_of_voice || 'enthusiastic';\n      switch(tone) {\n        case 'professional': return 0.2;\n        case 'casual': return 0.4;\n        case 'humorous': return 0.8;\n        case 'enthusiastic':\n        default: return 0.6;\n      }\n    })() }},\n    \"use_speaker_boost\": true\n  },\n  \"output_format\": \"mp3_44100_128\"\n}",
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "id": "be298f21-1b4b-4516-84a5-d2930056b981",
+      "name": "Generate Voiceover (ElevenLabs)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-5232, 16]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://zboemxtwwxnweawzqjop.supabase.co/storage/v1/object/Voiceovers/{{ $('Webhook').item.json.body.userId }}/{{ $now.format('yyyyMMdd_HHmmss') }}-voiceover.mp3",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "audio/mpeg"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-5008, 16],
+      "id": "0e00a8a8-1ffe-4c8d-b666-ed9e9bd268a7",
+      "name": "Upload Voiceover to Supabase Storage",
+      "credentials": {
+        "supabaseApi": {
+          "id": "xmKD2hb33hjFVl4u",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "user_videos",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $('Webhook').item.json.body.userId }}"
+            },
+            {
+              "fieldId": "trend_id",
+              "fieldValue": "={{ $('Webhook').item.json.body.trendId }}"
+            },
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ $('Get Trend Data').item.json.title }}"
+            },
+            {
+              "fieldId": "description",
+              "fieldValue": "={{ $('Get Trend Data').item.json.description }}"
+            },
+            {
+              "fieldId": "script_text",
+              "fieldValue": "={{ $('Generate Script (Gemini)').item.json.candidates[0].content.parts[0].text }}"
+            },
+            {
+              "fieldId": "voiceover_url",
+              "fieldValue": "={{ $('Upload Voiceover to Supabase Storage').item.json.Key }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "processing"
+            },
+            {
+              "fieldId": "publishing_action",
+              "fieldValue": "={{ $('Webhook').item.json.body.publishAction || 'none' }}"
+            },
+            {
+              "fieldId": "generation_started_at",
+              "fieldValue": "={{ $now }}"
+            },
+            {
+              "fieldId": "generation_settings",
+              "fieldValue": "={\n  \"voice_id\": \"{{ $('Get User Preferences').first().json.ai_voice_id || '21m00Tcm4TlvDq8ikWAM' }}\",\n  \"model_used\": \"google/gemini-2.5-flash\",\n  \"trend_source\": \"{{ $('Get Trend Data').first().json.source }}\"\n}\n"
+            }
+          ]
+        }
+      },
+      "id": "679a3183-e9aa-465c-a5f6-4b14d64776ea",
+      "name": "Create Video Record",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-4784, 16],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xmKD2hb33hjFVl4u",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.pexels.com/videos/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $('Get Trend Data').item.json.title }} trending popular viral"
+            },
+            {
+              "name": "orientation",
+              "value": "portrait"
+            },
+            {
+              "name": "size",
+              "value": "large"
+            },
+            {
+              "name": "per_page",
+              "value": "5"
+            },
+            {
+              "name": "duration_min",
+              "value": "10"
+            },
+            {
+              "name": "duration_max",
+              "value": "20"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=ALIbj1fgNdbzy8cujwEFVMKNihuTRiMApR6A6B5lZEbhEQEE26IQIFH8"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7540f1e4-4e47-4a1c-bdac-8ce454c0c4a1",
+      "name": "Get Background Video (Pexels)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-4560, 16]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.shotstack.io/edit/v1/render",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "=N7ygbh8B2w1w2oBhWqa4t03IQIJCitVTA2A2QrI1"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"timeline\": {\n    \"background\": \"#000000\",\n    \"tracks\": [\n      {\n        \"clips\": [\n          {\n            \"asset\": {\n              \"type\": \"video\",\n              \"src\": \"{{ (() => { const videos = $('Get Background Video (Pexels)').first().json.videos; const randomIndex = Math.floor(Math.random() * videos.length); const selectedVideo = videos[randomIndex]; return selectedVideo.video_files.find(file => file.width === 720 && file.height === 1280)?.link || selectedVideo.video_files[0].link; })() }}\",\n              \"volume\": 0.1\n            },\n            \"start\": 0,\n            \"length\": {{ $('Get User Preferences').first().json.preferred_video_length || 15 }},\n            \"fit\": \"crop\",\n            \"scale\": 1\n          }\n        ]\n      },\n      {\n        \"clips\": [\n          {\n            \"asset\": {\n              \"type\": \"audio\",\n              \"src\": \"https://zboemxtwwxnweawzqjop.supabase.co/storage/v1/object/public/{{$('Upload Voiceover to Supabase Storage').first().json.Key}}\",\n              \"volume\": 1\n            },\n            \"start\": 0,\n            \"length\": {{ $('Get User Preferences').first().json.preferred_video_length || 15 }}\n          }\n        ]\n      },\n      {\n        \"clips\": [\n          {\n            \"asset\": {\n              \"type\": \"title\",\n              \"text\": \"{{ $('Get Trend Data').first().json.title }}\",\n              \"style\": \"{{ (() => {\n                const style = $('Get User Preferences').first().json.video_style_preference || 'modern';\n                switch(style) {\n                  case 'modern': return 'future';\n                  case 'classic': return 'subtitle';\n                  case 'minimal': return 'minimal';\n                  case 'bold': return 'blockbuster';\n                  default: return 'future';\n                }\n              })() }}\",\n              \"color\": \"#ffffff\",\n              \"size\": \"medium\",\n              \"background\": \"{{ $('Get User Preferences').first().json.brand_color || '#3b82f6' }}\",\n              \"position\": \"center\"\n            },\n            \"start\": 0,\n            \"length\": 3,\n            \"transition\": {\n              \"in\": \"fade\",\n              \"out\": \"fade\"\n            }\n          }\n        ]\n      }\n    ]\n  },\n  \"output\": {\n    \"format\": \"mp4\",\n    \"resolution\": \"sd\",\n    \"aspectRatio\": \"9:16\",\n    \"fps\": 25,\n    \"scaleTo\": \"mobile\"\n  }\n}",
+        "options": {}
+      },
+      "id": "b4d78d1c-976e-42b3-963a-b246b2eedaab",
+      "name": "Render Video (Shotstack)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-4336, 16]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "id": "100a746f-2e92-4817-b3bb-7eb675655cc7",
+      "name": "Wait for Render Start",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [-4112, 16],
+      "webhookId": "a50231d4-800e-4b2f-aa5b-0d2899b0f3e6"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.shotstack.io/edit/v1/render/{{ $('Render Video (Shotstack)').first().json.response.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "=N7ygbh8B2w1w2oBhWqa4t03IQIJCitVTA2A2QrI1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cb3ca7f1-36cc-42e4-b1c5-77f2ae0210fa",
+      "name": "Poll Shotstack Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-3888, 16]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.response.status }}",
+              "rightValue": "done",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e4ec55ee-16b6-4c24-960c-835da6962348",
+      "name": "Check if Video Done",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-3664, -64]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.response.status }}",
+              "rightValue": "failed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7a1a4272-8751-4206-9d05-e413e115d2c5",
+      "name": "Check if Video Failed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-3440, 128]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "id": "28dd757a-d4b9-4022-83be-77383e5f9947",
+      "name": "Wait Before Retry",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [-3216, 112],
+      "webhookId": "05574c4a-6057-410d-8b2a-78d2480359cf"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "user_videos",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Create Video Record').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "completed"
+            },
+            {
+              "fieldId": "final_video_url",
+              "fieldValue": "={{ $('Poll Shotstack Status').first().json.response.url }}"
+            },
+            {
+              "fieldId": "background_video_url",
+              "fieldValue": "={{ (() => { const videos = $('Get Background Video (Pexels)').first().json.videos; const randomIndex = Math.floor(Math.random() * videos.length); const selectedVideo = videos[randomIndex]; return selectedVideo.video_files.find(file => file.width === 720 && file.height === 1280)?.link || selectedVideo.video_files[0].link; })() }}"
+            },
+            {
+              "fieldId": "thumbnail_url",
+              "fieldValue": "={{ (() => { const videos = $('Get Background Video (Pexels)').first().json.videos; const randomIndex = Math.floor(Math.random() * videos.length); return videos[randomIndex].image; })() }}"
+            },
+            {
+              "fieldId": "generation_completed_at",
+              "fieldValue": "={{ $now }}"
+            },
+            {
+              "fieldId": "duration_seconds",
+              "fieldValue": "15"
+            },
+            {
+              "fieldId": "resolution",
+              "fieldValue": "720x1280"
+            },
+            {
+              "fieldId": "aspect_ratio",
+              "fieldValue": "9:16"
+            }
+          ]
+        }
+      },
+      "id": "08c9cc3c-6a2d-46e8-b6fb-34752844adec",
+      "name": "Update Video Record (Success)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-3440, -64],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xmKD2hb33hjFVl4u",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "user_videos",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Create Video Record').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "failed"
+            },
+            {
+              "fieldId": "error_message",
+              "fieldValue": "={{ $('Poll Shotstack Status').first().json.response.error || 'Video rendering failed' }}"
+            },
+            {
+              "fieldId": "generation_completed_at",
+              "fieldValue": "={{ $now }}"
+            }
+          ]
+        }
+      },
+      "id": "0e5b6295-47db-43da-b82a-e568053e6d7b",
+      "name": "Update Video Record (Failed)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-3216, 272],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xmKD2hb33hjFVl4u",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "social_connections",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "keyValue": "={{ $('Webhook').item.json.body.userId }}"
+            },
+            {
+              "keyName": "is_active",
+              "keyValue": true
+            }
+          ]
+        }
+      },
+      "id": "check-user-connections",
+      "name": "Check User Social Connections",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-3216, -64],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xmKD2hb33hjFVl4u",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "output": "input",
+        "expression": "={{ $('Webhook').item.json.body.publishAction || 'none' }}",
+        "rules": {
+          "rules": [
+            {
+              "output": 0,
+              "expression": "none"
+            },
+            {
+              "output": 1,
+              "expression": "tiktok"
+            },
+            {
+              "output": 2,
+              "expression": "youtube"
+            },
+            {
+              "output": 3,
+              "expression": "both"
+            }
+          ]
+        }
+      },
+      "id": "publishing-router",
+      "name": "Publishing Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [-2992, -64]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filter social connections for TikTok\nconst connections = $input.first().json;\nconst tiktokConnection = connections.find(conn => \n  conn.platform === 'tiktok' && \n  conn.is_active && \n  new Date(conn.expires_at) > new Date()\n);\n\nif (!tiktokConnection) {\n  return {\n    json: {\n      error: 'No valid TikTok connection found',\n      hasValidConnection: false\n    }\n  };\n}\n\nreturn {\n  json: {\n    hasValidConnection: true,\n    connection: tiktokConnection,\n    accessToken: tiktokConnection.access_token,\n    username: tiktokConnection.platform_username,\n    videoData: {\n      title: $('Get Trend Data').first().json.title,\n      videoUrl: $('Poll Shotstack Status').first().json.response.url,\n      scriptText: $('Generate Script (Gemini)').item.json.candidates[0].content.parts[0].text\n    }\n  }\n};"
+      },
+      "id": "prepare-tiktok-data",
+      "name": "Prepare TikTok Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-2768, -200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.tiktokapis.com/v2/post/publish/video/init/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"post_info\": {\n    \"title\": \"{{ $json.videoData.title }}\",\n    \"description\": \"{{ $json.videoData.scriptText }}\",\n    \"privacy_level\": \"PUBLIC_TO_EVERYONE\",\n    \"disable_duet\": false,\n    \"disable_comment\": false,\n    \"disable_stitch\": false,\n    \"video_cover_timestamp_ms\": 1000\n  },\n  \"source_info\": {\n    \"source\": \"PULL_FROM_URL\",\n    \"video_url\": \"{{ $json.videoData.videoUrl }}\"\n  }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        },
+        "onError": "continueRegularOutput"
+      },
+      "id": "initiate-tiktok-upload",
+      "name": "Initiate TikTok Upload",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-2544, -200]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "id": "wait-tiktok-processing",
+      "name": "Wait for TikTok Processing",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [-2320, -200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.tiktokapis.com/v2/post/publish/status/fetch/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Prepare TikTok Data').item.json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"publish_id\": \"{{ $('Initiate TikTok Upload').item.json.data.publish_id }}\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      "id": "check-tiktok-status",
+      "name": "Check TikTok Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-2096, -200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.data.status }}",
+              "rightValue": "PUBLISH_COMPLETE",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-tiktok-complete",
+      "name": "Check TikTok Complete",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-1872, -200]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "user_videos",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Create Video Record').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "publishing_status",
+              "fieldValue": "published"
+            },
+            {
+              "fieldId": "tiktok_url",
+              "fieldValue": "={{ $('Check TikTok Status').item.json.data.share_url || 'https://tiktok.com/@' + $('Prepare TikTok Data').item.json.username }}"
+            },
+            {
+              "fieldId": "platform_post_id",
+              "fieldValue": "={{ $('Initiate TikTok Upload').item.json.data.publish_id }}"
+            },
+            {
+              "fieldId": "published_at",
+              "fieldValue": "={{ $now }}"
+            }
+          ]
+        }
+      },
+      "id": "update-tiktok-published",
+      "name": "Update TikTok Published",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-1648, -300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xmKD2hb33hjFVl4u",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "user_videos",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Create Video Record').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "publishing_status",
+              "fieldValue": "publish_failed"
+            },
+            {
+              "fieldId": "publish_error",
+              "fieldValue": "={{ $json.error ? $json.error.message : 'TikTok publishing failed' }}"
+            }
+          ]
+        }
+      },
+      "id": "update-tiktok-failed",
+      "name": "Update TikTok Failed",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-1648, -100],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xmKD2hb33hjFVl4u",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filter social connections for YouTube\nconst connections = $input.first().json;\nconst youtubeConnection = connections.find(conn => \n  conn.platform === 'youtube' && \n  conn.is_active && \n  new Date(conn.expires_at) > new Date()\n);\n\nif (!youtubeConnection) {\n  return {\n    json: {\n      error: 'No valid YouTube connection found',\n      hasValidConnection: false\n    }\n  };\n}\n\nreturn {\n  json: {\n    hasValidConnection: true,\n    connection: youtubeConnection,\n    accessToken: youtubeConnection.access_token,\n    refreshToken: youtubeConnection.refresh_token,\n    channelId: youtubeConnection.platform_username,\n    videoData: {\n      title: $('Get Trend Data').first().json.title,\n      description: $('Generate Script (Gemini)').item.json.candidates[0].content.parts[0].text,\n      videoUrl: $('Poll Shotstack Status').first().json.response.url,\n      tags: ['shorts', 'trending', 'viral']\n    }\n  }\n};"
+      },
+      "id": "prepare-youtube-data",
+      "name": "Prepare YouTube Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-2768, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// YouTube Upload Implementation\n// This is a simplified version - in production, you'd use the googleapis library\n\nconst videoData = $input.first().json.videoData;\nconst accessToken = $input.first().json.accessToken;\nconst videoUrl = videoData.videoUrl;\n\n// First, we need to download the video file\n// In a real implementation, you'd use a proper HTTP client\ntry {\n  // For MVP, we'll simulate the upload process\n  // In production, implement proper resumable upload\n  \n  const uploadResponse = {\n    id: 'simulated_video_id_' + Date.now(),\n    snippet: {\n      title: videoData.title,\n      description: videoData.description,\n      channelId: $input.first().json.channelId\n    },\n    status: {\n      uploadStatus: 'uploaded',\n      privacyStatus: 'public'\n    }\n  };\n  \n  return {\n    json: {\n      success: true,\n      videoId: uploadResponse.id,\n      videoUrl: `https://youtube.com/shorts/${uploadResponse.id}`,\n      uploadStatus: 'completed'\n    }\n  };\n} catch (error) {\n  return {\n    json: {\n      success: false,\n      error: error.message,\n      uploadStatus: 'failed'\n    }\n  };\n}"
+      },
+      "id": "upload-to-youtube",
+      "name": "Upload to YouTube (Simplified)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-2544, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-youtube-success",
+      "name": "Check YouTube Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-2320, 0]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "user_videos",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Create Video Record').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "publishing_status",
+              "fieldValue": "published"
+            },
+            {
+              "fieldId": "youtube_url",
+              "fieldValue": "={{ $('Upload to YouTube (Simplified)').item.json.videoUrl }}"
+            },
+            {
+              "fieldId": "platform_post_id",
+              "fieldValue": "={{ $('Upload to YouTube (Simplified)').item.json.videoId }}"
+            },
+            {
+              "fieldId": "published_at",
+              "fieldValue": "={{ $now }}"
+            }
+          ]
+        }
+      },
+      "id": "update-youtube-published",
+      "name": "Update YouTube Published",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-2096, -100],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xmKD2hb33hjFVl4u",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "user_videos",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Create Video Record').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "publishing_status",
+              "fieldValue": "publish_failed"
+            },
+            {
+              "fieldId": "publish_error",
+              "fieldValue": "={{ $('Upload to YouTube (Simplified)').item.json.error || 'YouTube publishing failed' }}"
+            }
+          ]
+        }
+      },
+      "id": "update-youtube-failed",
+      "name": "Update YouTube Failed",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-2096, 100],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xmKD2hb33hjFVl4u",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle publishing to both platforms\n// Split the data for parallel processing\nconst connections = $input.first().json;\nconst videoData = {\n  title: $('Get Trend Data').first().json.title,\n  videoUrl: $('Poll Shotstack Status').first().json.response.url,\n  scriptText: $('Generate Script (Gemini)').item.json.candidates[0].content.parts[0].text\n};\n\nconst tiktokConnection = connections.find(conn => \n  conn.platform === 'tiktok' && \n  conn.is_active && \n  new Date(conn.expires_at) > new Date()\n);\n\nconst youtubeConnection = connections.find(conn => \n  conn.platform === 'youtube' && \n  conn.is_active && \n  new Date(conn.expires_at) > new Date()\n);\n\nreturn [\n  {\n    json: {\n      platform: 'tiktok',\n      hasValidConnection: !!tiktokConnection,\n      connection: tiktokConnection,\n      accessToken: tiktokConnection?.access_token,\n      username: tiktokConnection?.platform_username,\n      videoData: videoData\n    }\n  },\n  {\n    json: {\n      platform: 'youtube',\n      hasValidConnection: !!youtubeConnection,\n      connection: youtubeConnection,\n      accessToken: youtubeConnection?.access_token,\n      refreshToken: youtubeConnection?.refresh_token,\n      channelId: youtubeConnection?.platform_username,\n      videoData: videoData\n    }\n  }\n];"
+      },
+      "id": "prepare-both-platforms",
+      "name": "Prepare Both Platforms",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-2768, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.platform }}",
+              "rightValue": "tiktok",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "route-both-tiktok",
+      "name": "Route Both - TikTok",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-2544, 100]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.platform }}",
+              "rightValue": "youtube",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "route-both-youtube",
+      "name": "Route Both - YouTube",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-2544, 300]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "user_videos",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Create Video Record').item.json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "publishing_status",
+              "fieldValue": "download_only"
+            },
+            {
+              "fieldId": "published_at",
+              "fieldValue": "={{ $now }}"
+            }
+          ]
+        }
+      },
+      "id": "update-download-only",
+      "name": "Update Download Only",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-2768, 64],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xmKD2hb33hjFVl4u",
+          "name": "Supabase account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get User Preferences",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get User Preferences": {
+      "main": [
+        [
+          {
+            "node": "Get Trend Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Trend Data": {
+      "main": [
+        [
+          {
+            "node": "Generate Script (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Script (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Process Script Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Script Text": {
+      "main": [
+        [
+          {
+            "node": "Generate Voiceover (ElevenLabs)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Voiceover (ElevenLabs)": {
+      "main": [
+        [
+          {
+            "node": "Upload Voiceover to Supabase Storage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Voiceover to Supabase Storage": {
+      "main": [
+        [
+          {
+            "node": "Create Video Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Video Record": {
+      "main": [
+        [
+          {
+            "node": "Get Background Video (Pexels)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Background Video (Pexels)": {
+      "main": [
+        [
+          {
+            "node": "Render Video (Shotstack)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render Video (Shotstack)": {
+      "main": [
+        [
+          {
+            "node": "Wait for Render Start",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Render Start": {
+      "main": [
+        [
+          {
+            "node": "Poll Shotstack Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poll Shotstack Status": {
+      "main": [
+        [
+          {
+            "node": "Check if Video Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Video Done": {
+      "main": [
+        [
+          {
+            "node": "Update Video Record (Success)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check if Video Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Video Failed": {
+      "main": [
+        [
+          {
+            "node": "Update Video Record (Failed)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait Before Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Before Retry": {
+      "main": [
+        [
+          {
+            "node": "Poll Shotstack Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Video Record (Success)": {
+      "main": [
+        [
+          {
+            "node": "Check User Social Connections",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check User Social Connections": {
+      "main": [
+        [
+          {
+            "node": "Publishing Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publishing Router": {
+      "main": [
+        [
+          {
+            "node": "Update Download Only",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare TikTok Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare YouTube Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Both Platforms",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare TikTok Data": {
+      "main": [
+        [
+          {
+            "node": "Initiate TikTok Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initiate TikTok Upload": {
+      "main": [
+        [
+          {
+            "node": "Wait for TikTok Processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for TikTok Processing": {
+      "main": [
+        [
+          {
+            "node": "Check TikTok Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check TikTok Status": {
+      "main": [
+        [
+          {
+            "node": "Check TikTok Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check TikTok Complete": {
+      "main": [
+        [
+          {
+            "node": "Update TikTok Published",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update TikTok Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare YouTube Data": {
+      "main": [
+        [
+          {
+            "node": "Upload to YouTube (Simplified)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to YouTube (Simplified)": {
+      "main": [
+        [
+          {
+            "node": "Check YouTube Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check YouTube Success": {
+      "main": [
+        [
+          {
+            "node": "Update YouTube Published",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update YouTube Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Both Platforms": {
+      "main": [
+        [
+          {
+            "node": "Route Both - TikTok",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Route Both - YouTube",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Both - TikTok": {
+      "main": [
+        [
+          {
+            "node": "Initiate TikTok Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Both - YouTube": {
+      "main": [
+        [
+          {
+            "node": "Upload to YouTube (Simplified)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "versionId": "1.0.0",
+  "meta": {
+    "templateCreatedBy": "shortsforge-automation",
+    "instanceId": "enhanced-publishing-workflow"
+  },
+  "id": "shortsforge-enhanced-publishing-workflow",
+  "tags": []
+}

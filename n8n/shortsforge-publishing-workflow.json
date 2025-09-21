@@ -1,0 +1,868 @@
+{
+"nodes": [
+  {
+    "parameters": {
+      "httpMethod": "POST",
+      "path": "shortsforge-publish-video",
+      "responseMode": "responseNode",
+      "options": {}
+    },
+    "id": "05f1a262-fb72-4140-9d74-8fe14a8b0abd",
+    "name": "Webhook - Video Ready for Publishing",
+    "type": "n8n-nodes-base.webhook",
+    "typeVersion": 1,
+    "position": [
+      -7680,
+      168
+    ],
+    "webhookId": "shortsforge-publish-video"
+  },
+  {
+    "parameters": {
+      "operation": "get",
+      "tableId": "user_videos",
+      "filters": {
+        "conditions": [
+          {
+            "keyName": "id",
+            "keyValue": "={{ $json.body.videoId }}"
+          }
+        ]
+      }
+    },
+    "id": "05bc0d69-4927-4453-ad44-6953b0660575",
+    "name": "Get Video Record",
+    "type": "n8n-nodes-base.supabase",
+    "typeVersion": 1,
+    "position": [
+      -7456,
+      168
+    ],
+    "credentials": {
+      "supabaseApi": {
+        "id": "xmKD2hb33hjFVl4u",
+        "name": "Supabase account"
+      }
+    }
+  },
+  {
+    "parameters": {
+      "operation": "get",
+      "tableId": "social_connections",
+      "filters": {
+        "conditions": [
+          {
+            "keyName": "user_id",
+            "keyValue": "={{ $('Webhook - Video Ready for Publishing').item.json.body.userId }}"
+          },
+          {
+            "keyName": "is_active",
+            "keyValue": true
+          }
+        ]
+      }
+    },
+    "id": "d34ae199-ea08-4599-8c41-e18d2fba4db8",
+    "name": "Get User Social Connections",
+    "type": "n8n-nodes-base.supabase",
+    "typeVersion": 1,
+    "position": [
+      -7232,
+      168
+    ],
+    "credentials": {
+      "supabaseApi": {
+        "id": "xmKD2hb33hjFVl4u",
+        "name": "Supabase account"
+      }
+    }
+  },
+  {
+    "parameters": {
+      "rules": {
+        "values": [
+          {
+            "conditions": {
+              "options": {
+                "caseSensitive": true,
+                "leftValue": "",
+                "typeValidation": "strict",
+                "version": 1
+              },
+              "conditions": [
+                {
+                  "leftValue": "={{ $('Webhook - Video Ready for Publishing').item.json.body.publishAction }}",
+                  "rightValue": "none",
+                  "operator": {
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "id": "345ff7e0-6125-4796-857b-a04285e20d95"
+                }
+              ],
+              "combinator": "and"
+            }
+          },
+          {
+            "conditions": {
+              "options": {
+                "caseSensitive": true,
+                "leftValue": "",
+                "typeValidation": "strict",
+                "version": 1
+              },
+              "conditions": [
+                {
+                  "id": "cf9a3484-ff60-4609-aa98-e2a04ecde59b",
+                  "leftValue": "={{ $('Webhook - Video Ready for Publishing').item.json.body.publishAction }}",
+                  "rightValue": "tiktok",
+                  "operator": {
+                    "type": "string",
+                    "operation": "equals",
+                    "name": "filter.operator.equals"
+                  }
+                }
+              ],
+              "combinator": "and"
+            }
+          },
+          {
+            "conditions": {
+              "options": {
+                "caseSensitive": true,
+                "leftValue": "",
+                "typeValidation": "strict",
+                "version": 1
+              },
+              "conditions": [
+                {
+                  "id": "7b734f67-ce15-4fb4-88d5-4ace5b1f2b96",
+                  "leftValue": "={{ $('Webhook - Video Ready for Publishing').item.json.body.publishAction }}",
+                  "rightValue": "youtube",
+                  "operator": {
+                    "type": "string",
+                    "operation": "equals",
+                    "name": "filter.operator.equals"
+                  }
+                }
+              ],
+              "combinator": "and"
+            }
+          },
+          {
+            "conditions": {
+              "options": {
+                "caseSensitive": true,
+                "leftValue": "",
+                "typeValidation": "strict",
+                "version": 1
+              },
+              "conditions": [
+                {
+                  "id": "2349249b-6c63-4944-9335-fa638f0ca621",
+                  "leftValue": "={{ $('Webhook - Video Ready for Publishing').item.json.body.publishAction }}",
+                  "rightValue": "both",
+                  "operator": {
+                    "type": "string",
+                    "operation": "equals",
+                    "name": "filter.operator.equals"
+                  }
+                }
+              ],
+              "combinator": "and"
+            }
+          }
+        ]
+      },
+      "options": {}
+    },
+    "id": "907b487c-c7a6-48e8-bf11-7ab7fce4018e",
+    "name": "Publishing Router",
+    "type": "n8n-nodes-base.switch",
+    "typeVersion": 3,
+    "position": [
+      -7008,
+      136
+    ]
+  },
+  {
+    "parameters": {
+      "jsCode": "// Get connections and video record\nlet connections = $('Get User Social Connections').first()?.json;\nconst videoRecord = $('Get Video Record').first()?.json || {};\n\n// Normalize connections to always be an array\nif (connections && !Array.isArray(connections)) {\n  connections = [connections];\n}\n\nconst tiktokConnection = connections.find(conn =>\n  conn.platform === 'tiktok' &&\n  conn.is_active &&\n  new Date(conn.expires_at) > new Date()\n);\n\nif (!tiktokConnection) {\n  return {\n    json: {\n      error: 'No valid TikTok connection found',\n      hasValidConnection: false\n    }\n  };\n}\n\nreturn {\n  json: {\n    hasValidConnection: true,\n    connection: tiktokConnection,\n    accessToken: tiktokConnection.access_token,\n    username: tiktokConnection.platform_username,\n    videoData: {\n      title: videoRecord.title || '',\n      description: videoRecord.script_text || '',\n      videoUrl: videoRecord.final_video_url || ''\n    }\n  }\n};\n"
+    },
+    "id": "7ce69b92-3b00-4aef-b935-aba955b30eed",
+    "name": "Prepare TikTok Data",
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+      -6784,
+      72
+    ]
+  },
+  {
+    "parameters": {
+      "method": "POST",
+      "url": "https://open.tiktokapis.com/v2/post/publish/video/init/",
+      "sendHeaders": true,
+      "headerParameters": {
+        "parameters": [
+          {
+            "name": "Authorization",
+            "value": "=Bearer {{ $json.accessToken }}"
+          },
+          {
+            "name": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      },
+      "sendBody": true,
+      "specifyBody": "json",
+      "jsonBody": "={\n  \"post_info\": {\n    \"title\": \"{{ $json.videoData.title }}\",\n    \"description\": \"{{ $json.videoData.description }}\",\n    \"privacy_level\": \"SELF_ONLY\",\n    \"disable_duet\": false,\n    \"disable_comment\": false,\n    \"disable_stitch\": false,\n    \"video_cover_timestamp_ms\": 1000\n  },\n  \"source_info\": {\n    \"source\": \"FILE_UPLOAD\",\n    \"video_size\": {{ $json.fileSize }},\n    \"chunk_size\": {{ $json.chunkSize }},\n    \"total_chunk_count\": {{ $json.totalChunkCount }}\n  }\n}",
+      "options": {
+        "response": {
+          "response": {
+            "neverError": true,
+            "responseFormat": "json"
+          }
+        },
+        "timeout": 30000
+      }
+    },
+    "id": "7026c342-a246-4ac6-84b4-0a8dda0f5a46",
+    "name": "Initiate TikTok Upload",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.1,
+    "position": [
+      -6336,
+      264
+    ]
+  },
+  {
+    "parameters": {
+      "method": "PUT",
+      "url": "={{ $('Initiate TikTok Upload').item.json.data.upload_url }}",
+      "sendHeaders": true,
+      "headerParameters": {
+        "parameters": [
+          {
+            "name": "Content-Type",
+            "value": "video/mp4"
+          },
+          {
+            "name": "Content-Length",
+            "value": "={{ $('Calculate Video Metadata').item.json.fileSize }}"
+          }
+        ]
+      },
+      "sendBody": true,
+      "specifyBody": "binaryData",
+      "bodyBinaryPropertyName": "videoFile",
+      "options": {
+        "response": {
+          "response": {
+            "neverError": true,
+            "responseFormat": "json"
+          }
+        },
+        "timeout": 300000
+      }
+    },
+    "id": "upload-video-to-tiktok-12345",
+    "name": "Upload Video File to TikTok",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.1,
+    "position": [
+      -6224,
+      264
+    ]
+  },
+  {
+    "parameters": {
+      "amount": 5,
+      "unit": "seconds"
+    },
+    "id": "64bc0b85-389b-4134-a131-bb5532519cb8",
+    "name": "Wait for TikTok Processing",
+    "type": "n8n-nodes-base.wait",
+    "typeVersion": 1,
+    "position": [
+      -6112,
+      264
+    ],
+    "webhookId": "a3c84b32-d1cb-4b97-aabe-626086f42958"
+  },
+  {
+    "parameters": {
+      "method": "POST",
+      "url": "https://open.tiktokapis.com/v2/post/publish/status/fetch/",
+      "sendHeaders": true,
+      "headerParameters": {
+        "parameters": [
+          {
+            "name": "Authorization",
+            "value": "=Bearer {{ $('Prepare TikTok Data').item.json.accessToken }}"
+          },
+          {
+            "name": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      },
+      "sendBody": true,
+      "specifyBody": "json",
+      "jsonBody": "={\n  \"publish_id\": \"{{ $('Initiate TikTok Upload').item.json.data.publish_id }}\"\n}",
+      "options": {
+        "response": {
+          "response": {
+            "neverError": true,
+            "responseFormat": "json"
+          }
+        }
+      }
+    },
+    "id": "ecb6cfe2-8bb2-4bd5-a2bf-c1538f25ac11",
+    "name": "Check TikTok Status",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.1,
+    "position": [
+      -5888,
+      264
+    ]
+  },
+  {
+    "parameters": {
+      "conditions": {
+        "options": {
+          "caseSensitive": true,
+          "leftValue": "",
+          "typeValidation": "strict",
+          "version": 1
+        },
+        "conditions": [
+          {
+            "leftValue": "={{ $json.data.status }}",
+            "rightValue": "PUBLISH_COMPLETE",
+            "operator": {
+              "type": "string",
+              "operation": "equals"
+            },
+            "id": "d363f60a-e972-4905-b965-6c565109fff0"
+          }
+        ],
+        "combinator": "and"
+      },
+      "options": {}
+    },
+    "id": "5f469bc1-1699-4bf1-ad47-00b0ff9354b1",
+    "name": "Check TikTok Complete",
+    "type": "n8n-nodes-base.if",
+    "typeVersion": 2,
+    "position": [
+      -5664,
+      264
+    ]
+  },
+  {
+    "parameters": {
+      "operation": "update",
+      "tableId": "user_videos",
+      "matchType": "allFilters",
+      "filters": {
+        "conditions": [
+          {
+            "keyName": "id",
+            "condition": "eq",
+            "keyValue": "={{ $('Get Video Record').item.json.id }}"
+          }
+        ]
+      },
+      "fieldsUi": {
+        "fieldValues": [
+          {
+            "fieldId": "publishing_status",
+            "fieldValue": "published"
+          },
+          {
+            "fieldId": "tiktok_url",
+            "fieldValue": "={{ $('Check TikTok Status').item.json.data.share_url || 'https://tiktok.com/@' + $('Prepare TikTok Data').item.json.username }}"
+          },
+          {
+            "fieldId": "platform_post_id",
+            "fieldValue": "={{ $('Initiate TikTok Upload').item.json.data.publish_id }}"
+          },
+          {
+            "fieldId": "published_at",
+            "fieldValue": "={{ $now }}"
+          }
+        ]
+      }
+    },
+    "id": "d87473ec-455d-4a21-8c7c-4e96c090eaf5",
+    "name": "Update TikTok Published",
+    "type": "n8n-nodes-base.supabase",
+    "typeVersion": 1,
+    "position": [
+      -5440,
+      168
+    ],
+    "credentials": {
+      "supabaseApi": {
+        "id": "xmKD2hb33hjFVl4u",
+        "name": "Supabase account"
+      }
+    }
+  },
+  {
+    "parameters": {
+      "operation": "update",
+      "tableId": "user_videos",
+      "matchType": "allFilters",
+      "filters": {
+        "conditions": [
+          {
+            "keyName": "id",
+            "condition": "eq",
+            "keyValue": "={{ $('Get Video Record').item.json.id }}"
+          }
+        ]
+      },
+      "fieldsUi": {
+        "fieldValues": [
+          {
+            "fieldId": "publishing_status",
+            "fieldValue": "publish_failed"
+          },
+          {
+            "fieldId": "publish_error",
+            "fieldValue": "={{ $json.error ? $json.error.message : 'TikTok publishing failed' }}"
+          }
+        ]
+      }
+    },
+    "id": "15c8e032-d149-4452-9412-1453974c08db",
+    "name": "Update TikTok Failed",
+    "type": "n8n-nodes-base.supabase",
+    "typeVersion": 1,
+    "position": [
+      -5440,
+      360
+    ],
+    "credentials": {
+      "supabaseApi": {
+        "id": "xmKD2hb33hjFVl4u",
+        "name": "Supabase account"
+      }
+    }
+  },
+  {
+    "parameters": {
+      "jsCode": "// Filter social connections for YouTube\nconst connections = $input.first().json;\nconst videoRecord = $('Get Video Record').first().json;\n\nconst youtubeConnection = connections.find(conn => \n  conn.platform === 'youtube' && \n  conn.is_active && \n  new Date(conn.expires_at) > new Date()\n);\n\nif (!youtubeConnection) {\n  return {\n    json: {\n      error: 'No valid YouTube connection found',\n      hasValidConnection: false\n    }\n  };\n}\n\nreturn {\n  json: {\n    hasValidConnection: true,\n    connection: youtubeConnection,\n    accessToken: youtubeConnection.access_token,\n    refreshToken: youtubeConnection.refresh_token,\n    channelId: youtubeConnection.platform_username,\n    videoData: {\n      title: videoRecord.title,\n      description: videoRecord.script_text,\n      videoUrl: videoRecord.final_video_url,\n      tags: ['shorts', 'trending', 'viral']\n    }\n  }\n};"
+    },
+    "id": "7d5ae317-3fce-41fd-ba7d-375c2b1e9af3",
+    "name": "Prepare YouTube Data",
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+      -6560,
+      264
+    ]
+  },
+  {
+    "parameters": {
+      "url": "={{ $input.first().json.videoData.videoUrl }}",
+      "options": {
+        "response": {
+          "response": {
+            "responseFormat": "file"
+          }
+        },
+        "timeout": 60000
+      }
+    },
+    "id": "b12d26e1-7aa6-4675-906d-f7fc2c73becc",
+    "name": "Download Video File",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.2,
+    "position": [
+      -6336,
+      456
+    ]
+  },
+  {
+    "parameters": {
+      "jsCode": "// Handle publishing to both platforms\n// Split the data for parallel processing\nconst connections = $input.first().json;\nconst videoRecord = $('Get Video Record').first().json;\n\nconst videoData = {\n  title: videoRecord.title,\n  description: videoRecord.script_text,\n  videoUrl: videoRecord.final_video_url\n};\n\nconst tiktokConnection = connections.find(conn => \n  conn.platform === 'tiktok' && \n  conn.is_active && \n  new Date(conn.expires_at) > new Date()\n);\n\nconst youtubeConnection = connections.find(conn => \n  conn.platform === 'youtube' && \n  conn.is_active && \n  new Date(conn.expires_at) > new Date()\n);\n\nreturn [\n  {\n    json: {\n      platform: 'tiktok',\n      hasValidConnection: !!tiktokConnection,\n      connection: tiktokConnection,\n      accessToken: tiktokConnection?.access_token,\n      username: tiktokConnection?.platform_username,\n      videoData: videoData\n    }\n  },\n  {\n    json: {\n      platform: 'youtube',\n      hasValidConnection: !!youtubeConnection,\n      connection: youtubeConnection,\n      accessToken: youtubeConnection?.access_token,\n      refreshToken: youtubeConnection?.refresh_token,\n      channelId: youtubeConnection?.platform_username,\n      videoData: videoData\n    }\n  }\n];"
+    },
+    "id": "3b89afc1-bece-4cb0-9918-77532c723235",
+    "name": "Prepare Both Platforms",
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+      -6784,
+      552
+    ]
+  },
+  {
+    "parameters": {
+      "conditions": {
+        "options": {
+          "caseSensitive": true,
+          "leftValue": "",
+          "typeValidation": "strict",
+          "version": 1
+        },
+        "conditions": [
+          {
+            "leftValue": "={{ $json.platform }}",
+            "rightValue": "tiktok",
+            "operator": {
+              "type": "string",
+              "operation": "equals"
+            },
+            "id": "a73b85c6-0fa7-469a-b506-1bace8125ace"
+          }
+        ],
+        "combinator": "and"
+      },
+      "options": {}
+    },
+    "id": "a5c4ee44-d806-461b-b77d-651e7fb4a446",
+    "name": "Route Both - TikTok",
+    "type": "n8n-nodes-base.if",
+    "typeVersion": 2,
+    "position": [
+      -6560,
+      456
+    ]
+  },
+  {
+    "parameters": {
+      "conditions": {
+        "options": {
+          "caseSensitive": true,
+          "leftValue": "",
+          "typeValidation": "strict"
+        },
+        "conditions": [
+          {
+            "leftValue": "={{ $json.platform }}",
+            "rightValue": "youtube",
+            "operator": {
+              "type": "string",
+              "operation": "equals"
+            }
+          }
+        ],
+        "combinator": "and"
+      },
+      "options": {}
+    },
+    "id": "f102a57f-67f9-488a-aaa2-207cccacdf66",
+    "name": "Route Both - YouTube",
+    "type": "n8n-nodes-base.if",
+    "typeVersion": 2,
+    "position": [
+      -6560,
+      648
+    ]
+  },
+  {
+    "parameters": {
+      "operation": "update",
+      "tableId": "user_videos",
+      "matchType": "allFilters",
+      "filters": {
+        "conditions": [
+          {
+            "keyName": "id",
+            "condition": "eq",
+            "keyValue": "={{ $('Get Video Record').item.json.id }}"
+          }
+        ]
+      },
+      "fieldsUi": {
+        "fieldValues": [
+          {
+            "fieldId": "publishing_status",
+            "fieldValue": "download_only"
+          },
+          {
+            "fieldId": "published_at",
+            "fieldValue": "={{ $now }}"
+          }
+        ]
+      }
+    },
+    "id": "ee59e300-1397-477b-abab-75fe1d96f2a0",
+    "name": "Update Download Only",
+    "type": "n8n-nodes-base.supabase",
+    "typeVersion": 1,
+    "position": [
+      -6784,
+      -120
+    ],
+    "credentials": {
+      "supabaseApi": {
+        "id": "xmKD2hb33hjFVl4u",
+        "name": "Supabase account"
+      }
+    }
+  },
+  {
+    "parameters": {
+      "method": "GET",
+      "url": "={{ $('Get Video Record').item.json.final_video_url }}",
+      "options": {
+        "response": {
+          "response": {
+            "neverError": true,
+            "responseFormat": "file",
+            "outputPropertyName": "videoFile"
+          }
+        }
+      }
+    },
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.2,
+    "position": [
+      -6560,
+      72
+    ],
+    "id": "f3a551c7-490a-46e3-9f33-7986fbed3a4f",
+    "name": "Get Video File Size"
+  },
+  {
+    "parameters": {
+      "jsCode": "// Calculate video metadata for TikTok upload\nconst tiktokData = $('Prepare TikTok Data').item.json;\nconst response = $input.item;\n\n// Try to get video size from different possible sources\nlet videoSize = 50000000; // Default 50MB\n\n// Check if we have binary data and get its size\nif (response.binary && response.binary.videoFile) {\n  const binaryData = response.binary.videoFile;\n  if (binaryData.data && binaryData.data.length) {\n    videoSize = binaryData.data.length;\n  }\n} else if (response.headers && response.headers['content-length']) {\n  videoSize = parseInt(response.headers['content-length']);\n} else if (response.json && response.json.headers && response.json.headers['content-length']) {\n  videoSize = parseInt(response.json.headers['content-length']);\n}\n\n// Calculate chunk information\nconst chunkSize = Math.min(videoSize, 10000000); // 10MB chunks max\nconst totalChunkCount = Math.ceil(videoSize / chunkSize);\n\nconsole.log('Video metadata calculated:', {\n  videoSize,\n  chunkSize,\n  totalChunkCount\n});\n\nreturn {\n  json: {\n    ...tiktokData,\n    fileSize: videoSize,\n    chunkSize: chunkSize,\n    totalChunkCount: totalChunkCount\n  },\n  binary: {\n    videoFile: response.binary?.videoFile\n  }\n};"
+    },
+    "id": "calculate-video-metadata",
+    "name": "Calculate Video Metadata",
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+      -6336,
+      72
+    ]
+  }
+],
+"connections": {
+  "Webhook - Video Ready for Publishing": {
+    "main": [
+      [
+        {
+          "node": "Get Video Record",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ]
+  },
+  "Get Video Record": {
+    "main": [
+      [
+        {
+          "node": "Get User Social Connections",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ]
+  },
+  "Get User Social Connections": {
+    "main": [
+      [
+        {
+          "node": "Publishing Router",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ]
+  },
+  "Publishing Router": {
+    "main": [
+      [
+        {
+          "node": "Update Download Only",
+          "type": "main",
+          "index": 0
+        }
+      ],
+      [
+        {
+          "node": "Prepare TikTok Data",
+          "type": "main",
+          "index": 0
+        }
+      ],
+      [
+        {
+          "node": "Prepare YouTube Data",
+          "type": "main",
+          "index": 0
+        }
+      ],
+      [
+        {
+          "node": "Prepare Both Platforms",
+          "type": "main",
+          "index": 0
+        }
+      ],
+      [],
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  "Prepare TikTok Data": {
+    "main": [
+      [
+        {
+          "node": "Get Video File Size",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ]
+  },
+  "Initiate TikTok Upload": {
+    "main": [
+      [
+        {
+          "node": "Upload Video File to TikTok",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ]
+  },
+  "Upload Video File to TikTok": {
+    "main": [
+      [
+        {
+          "node": "Wait for TikTok Processing",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ]
+  },
+  "Wait for TikTok Processing": {
+    "main": [
+      [
+        {
+          "node": "Check TikTok Status",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ]
+  },
+  "Check TikTok Status": {
+    "main": [
+      [
+        {
+          "node": "Check TikTok Complete",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ]
+  },
+  "Check TikTok Complete": {
+    "main": [
+      [
+        {
+          "node": "Update TikTok Published",
+          "type": "main",
+          "index": 0
+        }
+      ],
+      [
+        {
+          "node": "Wait for TikTok Processing",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ]
+  },
+  "Prepare YouTube Data": {
+    "main": [
+      [
+        {
+          "node": "Download Video File",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ]
+  },
+  "Prepare Both Platforms": {
+    "main": [
+      [
+        {
+          "node": "Route Both - TikTok",
+          "type": "main",
+          "index": 0
+        },
+        {
+          "node": "Route Both - YouTube",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ]
+  },
+  "Route Both - TikTok": {
+    "main": [
+      [
+        {
+          "node": "Initiate TikTok Upload",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ]
+  },
+  "Route Both - YouTube": {
+    "main": [
+      [
+        {
+          "node": "Download Video File",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ]
+  },
+  "Get Video File Size": {
+    "main": [
+      [
+        {
+          "node": "Calculate Video Metadata",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ]
+  },
+  "Calculate Video Metadata": {
+    "main": [
+      [
+        {
+          "node": "Initiate TikTok Upload",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ]
+  }
+},
+"pinData": {},
+"meta": {
+  "templateCredsSetupCompleted": true,
+  "instanceId": "947f992b8fb7b656db273be4ca5671437294e1faf55807f3ebc004a1f1588884"
+}
+}

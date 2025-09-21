@@ -1,0 +1,67 @@
+{
+  "timeline": {
+    "background": "#000000",
+    "tracks": [
+      {
+        "clips": [
+          {
+            "asset": {
+              "type": "video",
+              "src": "{{ $('Get Background Video (Pexels)').first().json.videos[0].video_files.find(file => file.width === 720 && file.height === 1280)?.link || $('Get Background Video (Pexels)').first().json.videos[0].video_files[0].link }}",
+              "volume": 0.1
+            },
+            "start": 0,
+            "length": 15,
+            "fit": "crop",
+            "scale": 1
+          }
+        ]
+      },
+      {
+        "clips": [
+          {
+            "asset": {
+              "type": "audio",
+              "src": "https://zboemxtwwxnweawzqjop.supabase.co/storage/v1/object/public/{{ $('HTTP Request').first().json.Key }}",
+              "volume": 1
+            },
+            "start": 0,
+            "length": 15
+          }
+        ]
+      },
+      {
+        "clips": [
+          {
+            "asset": {
+              "type": "title",
+              "text": "{{ $('Get Trend Data').first().json.title }}",
+              "style": "future",
+              "color": "#ffffff",
+              "size": "medium",
+              "background": "rgba(0,0,0,0.5)",
+              "position": "center"
+            },
+            "start": 0,
+            "length": 3,
+            "transition": {
+              "in": "fade",
+              "out": "fade"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "output": {
+    "format": "mp4",
+    "resolution": "sd",
+    "aspectRatio": "9:16",
+    "size": {
+      "width": 720,
+      "height": 1280
+    },
+    "fps": 25,
+    "scaleTo": "crop"
+  }
+}

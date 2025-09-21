@@ -6,6 +6,12 @@
         "shadcn@latest",
         "mcp"
       ]
+    },
+    "n8n-mcp": {
+      "command": "npx",
+      "args": [
+        "n8n-mcp"
+      ]
     }
   }
 }

@@ -1,31 +1,30 @@
-import { Bolt, Image, Shapes, Timer } from 'lucide-react';
+import { Video, Clock, Download, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const cards = [
   {
-    title: 'Storage used',
-    icon: <Bolt className={'text-[#4B4F4F]'} size={18} />,
-    value: '1.2 GB',
-    change: '10 GB remaining',
+    title: 'Videos generated',
+    icon: <Video className={'text-[#4B4F4F]'} size={18} />,
+    value: '0',
+    change: 'Start creating your first video',
   },
   {
-    title: 'Active workspaces',
-    icon: <Shapes className={'text-[#4B4F4F]'} size={18} />,
-    value: '4',
-    change: '6 available workspaces',
+    title: 'Processing time',
+    icon: <Clock className={'text-[#4B4F4F]'} size={18} />,
+    value: '0 min',
+    change: 'Average generation time',
   },
   {
-    title: 'Assets exported',
-    // eslint-disable-next-line jsx-a11y/alt-text
-    icon: <Image className={'text-[#4B4F4F]'} size={18} />,
-    value: '286',
-    change: '+16% from last month',
+    title: 'Downloads',
+    icon: <Download className={'text-[#4B4F4F]'} size={18} />,
+    value: '0',
+    change: 'Total video downloads',
   },
   {
-    title: 'Collaborators',
-    icon: <Timer className={'text-[#4B4F4F]'} size={18} />,
-    value: '10',
-    change: '+27% from last month',
+    title: 'Trending topics',
+    icon: <TrendingUp className={'text-[#4B4F4F]'} size={18} />,
+    value: '0',
+    change: 'Topics explored',
   },
 ];
 export function DashboardUsageCardGroup() {

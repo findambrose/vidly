@@ -1,0 +1,8 @@
+{
+  "query": "{{ $('Get Trend Data').first().json.title }} trending popular viral",
+  "orientation": "portrait",
+  "size": "large",
+  "per_page": 5,
+  "duration_min": 10,
+  "duration_max": 20
+}

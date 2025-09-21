@@ -1,6 +1,6 @@
 'use client';
 
-import { Album, CreditCard, Home } from 'lucide-react';
+import { Album, Home, TrendingUp, VideoIcon, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -12,21 +12,31 @@ const sidebarItems = [
     href: '/dashboard',
   },
   {
+    title: 'Create',
+    icon: <TrendingUp className="h-6 w-6" />,
+    href: '/create',
+  },
+  {
+    title: 'My Videos',
+    icon: <VideoIcon className="h-6 w-6" />,
+    href: '/videos',
+  },
+  {
     title: 'Subscriptions',
     icon: <Album className="h-6 w-6" />,
     href: '/dashboard/subscriptions',
   },
   {
-    title: 'Payments',
-    icon: <CreditCard className="h-6 w-6" />,
-    href: '/dashboard/payments',
+    title: 'Settings',
+    icon: <Settings className="h-6 w-6" />,
+    href: '/settings',
   },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   return (
-    <nav className="flex flex-col grow justify-between items-start px-2 text-sm font-medium lg:px-4">
+    <nav className="flex flex-col items-start px-2 text-sm font-medium lg:px-4">
       <div className={'w-full'}>
         {sidebarItems.map((item) => (
           <Link

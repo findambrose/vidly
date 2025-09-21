@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "mcp__shadcn__get_project_registries",
+      "mcp__shadcn__search_items_in_registries",
+      "mcp__shadcn__get_add_command_for_items",
+      "Bash(pnpm dlx shadcn@latest add:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm run:*)",
+      "Bash(supabase db:*)",
+      "Bash(npm install:*)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "Bash(pnpm lint:*)",
+      "WebSearch",
+      "Bash(curl:*)",
+      "Bash(vercel:*)",
+      "Bash(pnpm add:*)",
+      "mcp__n8n-mcp__tools_documentation",
+      "mcp__n8n-mcp__search_nodes",
+      "mcp__n8n-mcp__get_node_essentials",
+      "mcp__n8n-mcp__get_node_info",
+      "mcp__n8n-mcp__list_tasks",
+      "mcp__n8n-mcp__get_node_for_task",
+      "mcp__n8n-mcp__validate_workflow",
+      "Bash(python:*)",
+      "Bash(node:*)",
+      "mcp__n8n-mcp__validate_workflow_connections",
+      "WebFetch(domain:docs.n8n.io)",
+      "WebFetch(domain:community.n8n.io)",
+      "WebFetch(domain:n8n.io)"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "shadcn"
+  ]
+}
